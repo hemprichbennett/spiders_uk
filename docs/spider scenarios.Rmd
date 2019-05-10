@@ -1,0 +1,147 @@
+---
+title: "Spider sample and cost scenarios"
+author: "Dave Hemprich-Bennett"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+#### Header ####
+## Project:
+## Script purpose:
+## Date:
+## Author: Dave Hemprich-Bennett (hemprich.bennett@gmail.com)
+## Notes
+##################################################
+library(tidyverse)
+library(lubridate)
+library(ggbeeswarm)
+library(here)
+library(knitr)
+fieldwork_data <- read.csv(here("data", "raw_data", "field_data", "spider_fielddata.csv"),
+  header = T,
+  stringsAsFactors = F
+)
+
+fieldwork_data$Date <- dmy(fieldwork_data$Date)
+
+fieldwork_data <- cbind(fieldwork_data, year = year(fieldwork_data$Date),
+                        month = month(fieldwork_data$Date),
+                        day = day(fieldwork_data$Date))
+
+fieldwork_data$Bag <- toupper(fieldwork_data$Bag)
+
+fieldwork_data <- fieldwork_data %>%
+  unite(sampling_id, Bag, Reference, sep = ' ') %>%
+  select(SpiderCount, everything())
+
+table(fieldwork_data$Treatment, fieldwork_data$SiteLampType) 
+# number of sampling events
+
+morpho_data <- read.csv(here('data', "raw_data", "field_data", 'spider_morphos.csv'), 
+                        stringsAsFactors = F)
+
+
+morpho_counts <- morpho_data %>%
+  group_by(Bag, Pseudospecies, Site, Lighting) %>%
+  summarise(n = n()) %>% spread(key = Pseudospecies, value = n) %>%
+  unite(sampling_id, Bag, Site, Lighting, sep = ' ')
+
+
+uber_data <- left_join(fieldwork_data, morpho_counts, by = 'sampling_id')
+
+stripehead_or_straw_sites <- uber_data %>% 
+  filter(Stripehead > 1 | !Straws > 1) %>%
+  filter(SiteLampType != 'LPS') %>%
+  select(Stripehead, Straws, everything())
+
+
+poss_desirable <- stripehead_or_straw_sites %>%
+  filter(VisitNum %in% c(24, 38))
+
+
+#fieldwork_data<- fieldwork_data %>% # get rid of LPS data, theres not much
+#  filter(SiteLampType %in% c('HPS', "LED", "na"))
+
+
+# different approach, look at sites which have good numbers for both lighting types
+
+net_choosing_sites <- fieldwork_data %>%
+  select(SpiderCount, Site, SiteName, month, SiteLampType, Treatment) %>%
+  group_by(SiteName, month, SiteLampType) %>%
+  summarise(total = sum(SpiderCount)) %>%
+  spread(key = month, value = total) %>%
+  filter(!is.na(`2`)) %>%
+  filter(!is.na(`4`))
+
+summarised_treatments <- net_choosing_sites %>%
+  group_by(SiteLampType) %>%
+  summarise(Feb = sum(`2`), April = sum(`4`))# %>%
+  
+manually_edited <- read.csv(here('data', "raw_data", "field_data", 'spider_fielddata_DAVE_MANUALEDITS.csv'), stringsAsFactors = F)
+### THIS DATA WAS MANUALLY MUNGED IN A HURRY TO SORT THE SITELAMPTYPE AND MAY HAVE TYPOS. TRUST NOTHING
+
+manually_edited$Date <- dmy(manually_edited$Date)
+
+manually_edited <- cbind(manually_edited, year = year(manually_edited$Date),
+                        month = month(manually_edited$Date),
+                        day = day(manually_edited$Date))
+
+manual <- manually_edited %>%
+  select(SpiderCount, Site, SiteName, month, SiteLampType, Treatment) %>%
+  unite(Network, SiteLampType, Treatment) %>%
+  group_by(SiteName, month, Network) %>%
+  summarise(total = sum(SpiderCount)) %>%
+  spread(key = month, value = total) %>%
+  replace_na(list(`2`= 0, `4` = 0)) %>%
+  group_by(Network) %>%
+  summarise(Feb = sum(`2`), April = sum(`4`))# %>%
+
+manual <- manual[-grep('na', manual$Network),]
+
+# manual_costs <- manual %>%
+#   mutate(Feb = Feb *10) %>%
+#   mutate(April = April *10)
+# 
+colSums(manual[,2:3])* 10
+
+no_LPS <- manual[grep('HPS|LED', manual$Network),] # Only HPS and LED
+colSums(no_LPS[,2:3]) * 10
+
+only_lit <- manual[grep('_Lit', manual$Network),] # Only lit
+sum(colSums(only_lit[,2:3])) * 10
+#number of samples meeting above criteria
+
+
+no_LPS_lit <- no_LPS[grep('Lit', no_LPS$Network),]
+sum(colSums(no_LPS_lit[,2:3])) * 10
+
+sum(colSums(net_choosing_sites[,3:4]))
+```
+
+---
+
+For the `r sum(colSums(manual[,2:3]))` samples if we were to use all collected it would cost roughly £`r sum(colSums(manual[,2:3]))* 10`.  
+
+Breakdown of sample numbers:
+```{r, echo = F}
+kable(manual)
+```
+
+---
+
+For the `r sum(colSums(no_LPS[,2:3]))` samples if we are constrained to using sites with HPS and LED lights, plus their control areas it would cost roughly £`r sum(colSums(no_LPS[,2:3]))* 10`.  
+
+Breakdown of sample numbers:
+```{r, echo = F}
+kable(no_LPS)
+```
+
+---
+
+For the `r sum(colSums(only_lit[,2:3]))` samples only from lit areas it would cost roughly £`r sum(colSums(only_lit[,2:3]))* 10`  
+
+Breakdown of sample numbers:
+```{r, echo = F}
+kable(only_lit)
+```
+
