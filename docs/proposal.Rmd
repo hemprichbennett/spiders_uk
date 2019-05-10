@@ -1,0 +1,31 @@
+---
+title: "Spiders and lighting proposal"
+author:
+-  "David Hemprich-Bennett"
+- "Abigail Bailey"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: pdf_document
+bibliography: ../bibliography.bib
+---
+
+# Small summary
+* projected cost
+* possible findings
+* possible journal
+
+# Background
+We need some test-data
+Spider samples have been collected by Douglas Boyes during his PhD fieldwork, following the study design of MacGregor et al [-@macgregor_dark_2017].
+
+# Methods
+Spider identification should be undertaken through DNA barcoding to provide the best test-data for upcoming work by CRAG team. It will also help reduce errors caused by our awful ID skills! We can either barcode the spiders themselves using an Illumina MiSeq, as is planned for the diet, or potentially send the spiders to Guelph for full-length barcoding. Sending them to Guelph has 3 main advantages:  
+1. Longer sequences (~658bp) will be generated, allowing greater phylogenetic inference than the 150-300bp which would be obtained using a MiSeq.  
+2. It provides more useful example data for Dave than MiSeq, as this is the format of data that we'll be gaining for the main project  
+3. Its much less work for Abby and Dave to send Guelph a spider leg than it is for them to process the samples themselves!  
+
+
+# Costs
+We don't know how much Guelph would charge per-sample.
+
+
+# References
