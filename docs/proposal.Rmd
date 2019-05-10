@@ -15,7 +15,7 @@ bibliography: ../bibliography.bib
 
 # Background
 * We need some test-data
-* Spider samples have been collected by Douglas Boyes in February and April 2019 during his PhD fieldwork, following the study design of MacGregor et al [-@macgregor_dark_2017].
+* Spider samples have been collected by Douglas Boyes in February and April 2019 during his PhD fieldwork, following the study design of MacGregor et al [-@macgregor_dark_2017] who found moth abundance halved at lit sites, with 25% lower species richness and lower pollen transport compared to unlit sites. We have data from areas with High-Pressure Sodium (HPS) lighting and LED streetlights, as well as unlit areas which were paired to either of these treatments.
 
 # Methods
 Spider identification should be undertaken through DNA barcoding to provide the best test-data for upcoming work by CRAG team. It will also help reduce errors caused by our awful ID skills! We can either barcode the spiders using an Illumina MiSeq, as is planned for the diet, or potentially send the spiders to Guelph for full-length barcoding. Sending them to Guelph has 3 main advantages:  
