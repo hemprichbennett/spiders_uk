@@ -3,10 +3,28 @@ title: "Spiders and lighting proposal"
 author:
 -  "David Hemprich-Bennett"
 - "Abigail Bailey"
-date: "`r format(Sys.time(), '%d %B %Y')`"
 output: pdf_document
 bibliography: ../bibliography.bib
 ---
+
+```{r setup, include = F}
+library(tidyverse)
+library(lubridate)
+library(here)
+library(knitr)
+summary_fieldwork <- read.csv(here("data", "raw_data", "field_data", "spider_fielddata.csv"),
+                           header = T,
+                           stringsAsFactors = F
+)
+
+summary_fieldwork$Date <- dmy(summary_fieldwork$Date)
+
+summary_fieldwork <- cbind(summary_fieldwork, year = year(summary_fieldwork$Date),
+                        month = month(summary_fieldwork$Date),
+                        day = day(summary_fieldwork$Date))
+
+```
+
 
 # Small summary
 * Projected cost:
@@ -15,7 +33,7 @@ bibliography: ../bibliography.bib
 
 # Background
 * We need some test-data
-* Spider samples have been collected by Douglas Boyes in February and April 2019 during his PhD fieldwork, following the study design of MacGregor et al [-@macgregor_dark_2017] who found moth abundance halved at lit sites, with 25% lower species richness and lower pollen transport compared to unlit sites. We have data from areas with High-Pressure Sodium (HPS) lighting and LED streetlights, as well as unlit areas which were paired to either of these treatments.
+* Spider samples have been collected by Douglas Boyes (Newcastle and CEH) in February and April 2019 during his PhD fieldwork, **based on** the study design of MacGregor et al [-@macgregor_dark_2017] who found moth abundance halved at lit sites, with 25% lower species richness and lower pollen transport compared to unlit sites. We have data from areas with High-Pressure Sodium (HPS) lighting and LED streetlights, as well as unlit areas which were paired to either of these treatments.
 
 # Methods
 Spider identification should be undertaken through DNA barcoding to provide the best test-data for upcoming work by CRAG team. It will also help reduce errors caused by our awful ID skills! We can either barcode the spiders using an Illumina MiSeq, as is planned for the diet, or potentially send the spiders to Guelph for full-length barcoding. Sending them to Guelph has 3 main advantages:  
@@ -26,6 +44,68 @@ Spider identification should be undertaken through DNA barcoding to provide the 
 
 # Costs
 We don't know how much Guelph would charge per-sample.
+
+\pagebreak
+# Sample and sampling summary
+
+```{r summary_setup, echo = F}
+summary_fieldwork <- summary_fieldwork %>%
+  filter(SiteName != 'Upper Edington') # For the time being we're getting rid of Upper Edington: theres two sorts of streetlights there and
+# that causes issues
+
+summary_fieldwork$SiteLampType <- gsub('na', 'unlit', summary_fieldwork$SiteLampType)
+
+
+summary_fieldwork <- summary_fieldwork %>% 
+  select(SpiderCount, SiteName, Treatment, SiteLampType, Date, year, month, day)
+
+site_treatments <- summary_fieldwork %>% filter(SiteLampType != 'unlit') %>%
+  select(SiteName, SiteLampType) %>%
+  rename(location_type = SiteLampType) %>% # make a df which just has the site names and the overall treatments for the locale
+  distinct() # Only keep the distinct rows (duplicates are unnecessary)
+
+summary_fieldwork <- summary_fieldwork %>% left_join(site_treatments, by = 'SiteName') %>%
+  unite(`Transect classification`, location_type, Treatment, sep = ' ')
+
+# for ease of visual interpretation, rename the months from numbers to words
+summary_fieldwork$month <- month(summary_fieldwork$month, label = T)
+
+```
+
+
+```{r spider_counts, echo = F}
+n_spiders <- summary_fieldwork %>%
+  group_by(`Transect classification`, month) %>%
+  summarise(Spiders = sum(SpiderCount)) %>%
+  spread(key = month, value = Spiders)
+
+kable(n_spiders, caption = 'The number of spiders captured per treatment')
+```  
+
+
+
+```{r site_counts, echo = F}
+n_visits <- summary_fieldwork %>%
+  group_by(`Transect classification`, month) %>%
+  summarise(visits = n()) %>%
+  spread(key = month, value = visits)
+
+kable(n_visits, caption = 'The number of visits per treatment')
+
+```  
+
+```{r avg_catches, echo = F}
+
+catch_per_effort <- summary_fieldwork %>%
+  group_by(`Transect classification`, month) %>%
+  summarise(visits = n(), Spiders = sum(SpiderCount)) %>%
+  mutate(catches_per_visit = round(Spiders / visits, 1)) %>%
+  select(-Spiders, - visits) %>%
+  spread(key = month, value = catches_per_visit)
+
+kable(catch_per_effort, caption = 'The abundance per visit (to 1 d.p.)')  
+
+```
 
 
 # References
