@@ -13,16 +13,17 @@ library(lubridate)
 library(here)
 library(knitr)
 summary_fieldwork <- read.csv(here("data", "raw_data", "field_data", "spider_fielddata.csv"),
-                           header = T,
-                           stringsAsFactors = F
+  header = T,
+  stringsAsFactors = F
 )
 
 summary_fieldwork$Date <- dmy(summary_fieldwork$Date)
 
-summary_fieldwork <- cbind(summary_fieldwork, year = year(summary_fieldwork$Date),
-                        month = month(summary_fieldwork$Date),
-                        day = day(summary_fieldwork$Date))
-
+summary_fieldwork <- cbind(summary_fieldwork,
+  year = year(summary_fieldwork$Date),
+  month = month(summary_fieldwork$Date),
+  day = day(summary_fieldwork$Date)
+)
 ```
 
 
@@ -50,37 +51,37 @@ We don't know how much Guelph would charge per-sample.
 
 ```{r summary_setup, echo = F}
 summary_fieldwork <- summary_fieldwork %>%
-  filter(SiteName != 'Upper Edington') # For the time being we're getting rid of Upper Edington: theres two sorts of streetlights there and
+  filter(SiteName != "Upper Edington") # For the time being we're getting rid of Upper Edington: theres two sorts of streetlights there and
 # that causes issues
 
-summary_fieldwork$SiteLampType <- gsub('na', 'unlit', summary_fieldwork$SiteLampType)
+summary_fieldwork$SiteLampType <- gsub("na", "unlit", summary_fieldwork$SiteLampType)
 
 
-summary_fieldwork <- summary_fieldwork %>% 
+summary_fieldwork <- summary_fieldwork %>%
   select(SpiderCount, SiteName, Treatment, SiteLampType, Date, year, month, day)
 
-site_treatments <- summary_fieldwork %>% filter(SiteLampType != 'unlit') %>%
+site_treatments <- summary_fieldwork %>%
+  filter(SiteLampType != "unlit") %>%
   select(SiteName, SiteLampType) %>%
   rename(location_type = SiteLampType) %>% # make a df which just has the site names and the overall treatments for the locale
   distinct() # Only keep the distinct rows (duplicates are unnecessary)
 
-summary_fieldwork <- summary_fieldwork %>% left_join(site_treatments, by = 'SiteName') %>%
-  unite(`Transect classification`, location_type, Treatment, sep = ' ')
+summary_fieldwork <- summary_fieldwork %>%
+  left_join(site_treatments, by = "SiteName") %>%
+  unite(`Transect classification`, location_type, Treatment, sep = " ")
 
 # for ease of visual interpretation, rename the months from numbers to words
 summary_fieldwork$month <- month(summary_fieldwork$month, label = T)
-
 ```
 
 
 ```{r sites, echo = F}
 
-n_sites <- summary_fieldwork %>% 
-  group_by(`Transect classification`) %>% 
+n_sites <- summary_fieldwork %>%
+  group_by(`Transect classification`) %>%
   summarise(`Number of sites` = n_distinct(SiteName))
 
-kable(n_sites, caption = 'The number of sites per treatment')
-
+kable(n_sites, caption = "The number of sites per treatment")
 ```
 
 
@@ -91,8 +92,7 @@ n_visits <- summary_fieldwork %>%
   spread(key = month, value = visits) %>%
   mutate(Total = Feb + Apr)
 
-kable(n_visits, caption = 'The number of visits per treatment') 
-
+kable(n_visits, caption = "The number of visits per treatment")
 ```  
 
 ```{r spider_counts, echo = F}
@@ -102,7 +102,7 @@ n_spiders <- summary_fieldwork %>%
   spread(key = month, value = Spiders) %>%
   mutate(Total = Feb + Apr)
 
-kable(n_spiders, caption = 'The number of spiders captured per treatment')
+kable(n_spiders, caption = "The number of spiders captured per treatment")
 ```  
 
 
@@ -114,11 +114,10 @@ catch_per_effort <- summary_fieldwork %>%
   group_by(`Transect classification`, month) %>%
   summarise(visits = n(), Spiders = sum(SpiderCount)) %>%
   mutate(catches_per_visit = round(Spiders / visits, 1)) %>%
-  select(-Spiders, - visits) %>%
+  select(-Spiders, -visits) %>%
   spread(key = month, value = catches_per_visit)
 
-kable(catch_per_effort, caption = 'The abundance per visit (to 1 d.p.)')
-
+kable(catch_per_effort, caption = "The abundance per visit (to 1 d.p.)")
 ```
 
 \pagebreak
