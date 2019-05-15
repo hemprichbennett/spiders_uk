@@ -75,28 +75,9 @@ summary_fieldwork$month <- month(summary_fieldwork$month, label = T)
 ```
 
 
-```{r sites, echo = F}
-
-n_sites <- summary_fieldwork %>%
-  group_by(`Transect classification`) %>%
-  summarise(`Number of sites` = n_distinct(SiteName))
-
-kable(n_sites, caption = "The number of sites per treatment")
-```
-
-
-```{r site_counts, echo = F}
-n_visits <- summary_fieldwork %>%
-  group_by(`Transect classification`, month) %>%
-  summarise(visits = n()) %>%
-  spread(key = month, value = visits) %>%
-  mutate(Total = Feb + Apr)
-
-kable(n_visits, caption = "The number of visits per treatment")
-```  
-
 ```{r spider_counts, echo = F}
 n_spiders <- summary_fieldwork %>%
+  filter(!grepl('LPS', `Transect classification`)) %>%
   group_by(`Transect classification`, month) %>%
   summarise(Spiders = sum(SpiderCount)) %>%
   spread(key = month, value = Spiders) %>%
@@ -107,18 +88,4 @@ kable(n_spiders, caption = "The number of spiders captured per treatment")
 
 
 
-
-```{r avg_catches, echo = F}
-
-catch_per_effort <- summary_fieldwork %>%
-  group_by(`Transect classification`, month) %>%
-  summarise(visits = n(), Spiders = sum(SpiderCount)) %>%
-  mutate(catches_per_visit = round(Spiders / visits, 1)) %>%
-  select(-Spiders, -visits) %>%
-  spread(key = month, value = catches_per_visit)
-
-kable(catch_per_effort, caption = "The abundance per visit (to 1 d.p.)")
-```
-
-\pagebreak
 # References
