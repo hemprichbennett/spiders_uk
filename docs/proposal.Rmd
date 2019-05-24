@@ -128,8 +128,6 @@ For the dietary analysis, using one primer set would cost around £`r cost_1_pri
 # Schedule
 The extraction of spider dietary DNA will take around 2.5 weeks. Turnaround times from the sequencing of dietary samples and spider identification samples are unknown, but data analysis should be complete by late 2019.
 
-Upon successful completion the CRAGgles will go out for beer and ice cream!
-
 \pagebreak  
 
 # References
