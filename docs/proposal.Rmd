@@ -1,8 +1,5 @@
 ---
 title: "Spiders and lighting proposal"
-author:
--  "David Hemprich-Bennett"
-- "Abigail Bailey"
 output: pdf_document
 bibliography: ../bibliography.bib
 ---
@@ -26,33 +23,10 @@ summary_fieldwork <- cbind(summary_fieldwork,
 )
 ```
 
-
-# Small summary
-* Projected cost:
-* Possible findings:
-* Possible journal:
-
-# Background
-* We need some test-data
-* Spider samples have been collected by Douglas Boyes (Newcastle and CEH) in February and April 2019 during his PhD fieldwork, **based on** the study design of MacGregor et al [-@macgregor_dark_2017] who found moth abundance halved at lit sites, with 25% lower species richness and lower pollen transport compared to unlit sites. We have data from areas with High-Pressure Sodium (HPS) lighting and LED streetlights, as well as unlit areas which were paired to either of these treatments. A low number of visits were made to a location with Low-Pressure Sodium (LPS) lighting, but this is unlikely to be useful to the study.
-
-# Methods
-Spider identification should be undertaken through DNA barcoding to provide the best test-data for upcoming work by CRAG team. It will also help reduce errors caused by our awful ID skills! We can either barcode the spiders using an Illumina MiSeq, as is planned for the diet, or potentially send the spiders to Guelph for full-length barcoding. Sending them to Guelph has 3 main advantages:  
-1. Longer sequences (~658bp) will be generated, allowing greater phylogenetic inference than the 150-300bp which would be obtained using a MiSeq.  
-2. It provides more useful example data for Dave than MiSeq, as this is the format of data that we'll be gaining for the main project  
-3. Its much less work for Abby and Dave to send Guelph a spider leg than it is for them to process the samples themselves!  
-
-
-# Costs
-We don't know how much Guelph would charge per-sample.
-
-\pagebreak
-# Sample and sampling summary
-
 ```{r summary_setup, echo = F}
 summary_fieldwork <- summary_fieldwork %>%
-  filter(SiteName != "Upper Edington") # For the time being we're getting rid of Upper Edington: theres two sorts of streetlights there and
-# that causes issues
+  filter(SiteName != "Upper Edington")# %>% # For the time being we're getting rid of Upper Edington: theres two sorts of streetlights there and # that causes issues
+  #filter(SiteLampType != 'LPS')
 
 summary_fieldwork$SiteLampType <- gsub("na", "unlit", summary_fieldwork$SiteLampType)
 
@@ -68,24 +42,91 @@ site_treatments <- summary_fieldwork %>%
 
 summary_fieldwork <- summary_fieldwork %>%
   left_join(site_treatments, by = "SiteName") %>%
-  unite(`Transect classification`, location_type, Treatment, sep = " ")
+  unite(`Transect classification`, location_type, Treatment, sep = " ") %>%
+  filter(!grepl('LPS', `Transect classification`))
+
 
 # for ease of visual interpretation, rename the months from numbers to words
 summary_fieldwork$month <- month(summary_fieldwork$month, label = T)
 ```
 
-
-```{r spider_counts, echo = F}
-n_spiders <- summary_fieldwork %>%
+```{r spider_calcs, echo = F}
+spiders_df <- summary_fieldwork %>%
   filter(!grepl('LPS', `Transect classification`)) %>%
   group_by(`Transect classification`, month) %>%
   summarise(Spiders = sum(SpiderCount)) %>%
   spread(key = month, value = Spiders) %>%
-  mutate(Total = Feb + Apr)
+  mutate(Total = Feb + Apr) %>%
+  rename(February = Feb, April = Apr) %>%
+  rename(Treatment = `Transect classification`) # This is a better name for purposes of the table, but NOT to be confused with the column of the same name in the master csv
 
-kable(n_spiders, caption = "The number of spiders captured per treatment")
+n_spiders <- sum(spiders_df$Total)
+cost_1_primer_set <- sum(spiders_df$Total) * 5
+
 ```  
 
+# Summary
+* *Projected cost:* To process `r n_spiders` dietary samples using a single primer pair would cost an estimated £`r cost_1_primer_set`, plus whatever Guelph's cost is for identifying spider legs.
+* *Possible findings:* 
+  + Changes in network structure and species composition under different UK streetlighting
+  + Alterations in the phylogenetic structure of the networks, in both the genetic composition of the nodes and their interactions
+* *Possible journal:* It depends on how interesting the findings end up being, but potentially Ecology Letters. If we have interesting findings and can make a solid reproducible tool then it could get higher.
+
+# Background
+
+All research to date on the effects of artificial lighting on ecological interactions has taken a single-species approach, and the lack of published research on network-level processes under artificial lighting has been stated as a key priority [@sanders_how_2018]. Previous research on moths in Oxfordshire by MacGregor et al [-@macgregor_dark_2017] found moth abundance halved at artificially lit sites, with 25% lower species richness. Artificial lighting has been shown to have variable effects on the predation success of spiders [@heiling_why_1999; @frank_exploitation_2009; @yuen_artificial_2017; @willmott_guiding_2019]. The effects on spiders of such changes to prey availability and hunting ability could then be compounded by additional behavioural effects of lighting on the spiders themselves. I hypothesise that networks of grass-dwelling spiders and their prey will be modified by the introduction of artificial lighting.
+
+Spider samples have been collected by Douglas Boyes (Newcastle University and CEH) during his PhD fieldwork, by sweep-netting at roadside areas in Oxfordshire over multiple visits in February and April 2019. At each site one transect was walked under a streetlight, and another transect took place nearby in an unlit area to provide a spatially matched control. The lit areas were either lit by High-Pressure Sodium (HPS) or LED streetlights. See Table 1 for a summary of sampling effort. Each spider was collected into an individual tube, and so we have location and date data for every individual spider captured.
+  
+  
+```{r, echo = F}
+sampling_effort <- summary_fieldwork %>% 
+  filter(SiteLampType != 'unlit') %>%
+  filter(SiteLampType != 'LPS') %>%
+  mutate(`Transect classification` = gsub(' Lit', '', `Transect classification`)) %>%
+  group_by(SiteName, `Transect classification`, month) %>% 
+  rename(`Site name`= SiteName) %>%
+  rename(`Site classification`= `Transect classification`) %>%
+  summarise(n_visits = n()) %>% 
+  spread(value = n_visits, key = month) %>%
+  mutate(`Number of visits in February` = replace_na(Feb, 0)) %>%
+  mutate(`Number of visits in April` = replace_na(Apr, 0)) %>%
+  select(- Feb, - Apr)
+kable(sampling_effort, caption = "Visits to sites of each treatment, 2019")
+```
+
+\pagebreak
+  
+Through visual inspection there appear to be a few common spider species and many rarer ones, but our ability to assign them to morphospecies is poor. We propose identifying them through DNA barcoding as practice for the Ghanaian samples, and to assist our poor identification skills. We have a sufficient number of individual spiders from each lighting type, and each month, to be able to create ecological networks of insectivory (see table 2 for numbers of individual spiders per grouping). We can pool our individual spiders into 4 pools depending on the treatment they were captured within (HPS lit, HPS locations but unlit, LED lit and LED locations but unlit), and then further separate these pools into the two months of capture.
+These samples can provide a useful test-case for CRAG team to practice on, plus an interesting ecological study in their own right.
+  
+```{r count_table, echo = F}
+kable(spiders_df, caption = "The number of individual spiders captured per treatment and month.")
+```
 
 
+
+# Hypotheses
+* Spider-prey networks show significant structural differences (in the metrics 'nestedness', 'modularity' and 'niche overlap') between lit and unlit sites, and between HPS and LED lighting.
+* Spider species composition significantly differs between lit and unlit sites, and between HPS and LED lighting
+* Spiders show phylogenetic differences in their prey preference between lit and unlit sites, and between HPS and LED lighting.
+
+\pagebreak
+
+# Methods
+Each spider will be identified through DNA barcoding, and the diet of each spider will be identified through DNA metabarcoding. If possible, spider identification should take place using Guelph's PacBio sequencer. This will provide higher-quality data than doing it in the UK, and it will be a better pilot for the Ghanaian data.  
+The diet of each individual spider will be analysed using an Illumina MiSeq in the UK, either using one or two PCR primer sets on DNA extracted from spider abdomens. Previous studies have typically used one primer set but we may use two for future Ghanaian work, depending on the results of ongoing pilot work and the volume of samples obtained in Ghana. Using two PCR primer sets will improve the quality of our data, but nearly double our overall molecular costs.  
+It's currently contentious if dietary metabarcoding data can be used quantitatively: most studies to date have simply looked at the presence or absence of a prey species in an individual predator, and then summed the frequency of occurrence in that predator species overall ('FOO'). We can say that 40% of the sequences recovered from an individual spider's diet belonged to *Drosophila melanogaster*, but it's controversial if we should then use this relative read abundance ('RRA') as a proxy for the percentage of the spider's dietary biomass that was made up by *D melanogaster*. A high-profile paper [@deagle_counting_2018] recently made a strong argument in favour of using RRA instead of FOO, but theres no consensus yet. I propose using both approaches and then comparing the results.  
+Returned sequencing data will be used to create bipartite ecological networks of spiders eating other arthropods, with each arthropod species (spider or prey) being a node in the network. Data from individual spiders will be pooled from all lit HPS and LED sites, and from all of the unlit HPS and LED sites. This will provide 4 datasets: the HPS lit, HPS unlit, LED lit, and LED unlit sites (Table 2). As the unlit sites were spatially matched to the lit ones, they can provide controls for the appropriate lighting type (i.e. HPS unlit sites are the controls for the HPS lit ones). The datasets can then be further split by month of capture, if desired.  
+Analysis of the generated data will include the development of bioinformatic pipelines, and I propose trying to generate some new analytical methods for incorporating phylogenetic information into ecological networks by collaborating with Chris Terry (Zoology). Previous work has taken place looking at changes in a community's phylogenetic diversity [@grab_agriculturally_2019], and these methods could be built upon to look at changes in spider communities and their diets. The bioinformatics pipeline and analytical methods are expected to prove useful for work on Ghanaian samples in future.
+
+
+# Costs
+I don't know how much Guelph would charge per-sample, or if this would come out of our agreed total number of samples being sent to them. 
+For the dietary analysis, using one primer set would cost around £`r cost_1_primer_set`, for two primer sets it would cost £`r cost_1_primer_set * 2`.
+
+# Schedule
+The extraction of spider dietary DNA will take around 2.5 weeks. Turnaround times from the sequencing of dietary samples and spider identification samples are unknown, but data analysis should be complete by late 2019.
+
+\pagebreak
 # References
