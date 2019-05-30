@@ -17,6 +17,11 @@ summary_fieldwork <- read.csv(here("data", "raw_data", "field_data", "spider_fie
   stringsAsFactors = F
 )
 
+```
+
+```{r summary_setup, echo = F}
+# Rearrange the summary_fieldwork df nicely for subsequent use
+
 summary_fieldwork$Date <- dmy(summary_fieldwork$Date)
 
 summary_fieldwork <- cbind(summary_fieldwork,
@@ -24,9 +29,8 @@ summary_fieldwork <- cbind(summary_fieldwork,
   month = month(summary_fieldwork$Date),
   day = day(summary_fieldwork$Date)
 )
-```
 
-```{r summary_setup, echo = F}
+
 summary_fieldwork <- summary_fieldwork %>%
   filter(SiteName != "Upper Edington")# %>% # For the time being we're getting rid of Upper Edington: theres two sorts of streetlights there and # that causes issues
   #filter(SiteLampType != 'LPS')
@@ -54,6 +58,7 @@ summary_fieldwork$month <- month(summary_fieldwork$month, label = T)
 ```
 
 ```{r spider_calcs, echo = F}
+#make a tibble for display later
 spiders_df <- summary_fieldwork %>%
   filter(!grepl('LPS', `Transect classification`)) %>%
   group_by(`Transect classification`, month) %>%
@@ -63,8 +68,9 @@ spiders_df <- summary_fieldwork %>%
   rename(February = Feb, April = Apr) %>%
   rename(Treatment = `Transect classification`) # This is a better name for purposes of the table, but NOT to be confused with the column of the same name in the master csv
 
-n_spiders <- sum(spiders_df$Total)
-cost_1_primer_set <- sum(spiders_df$Total) * 5
+# make variables for use in-text
+n_spiders <- sum(spiders_df$Total) # number of spiders we want to look at
+cost_1_primer_set <- sum(spiders_df$Total) * 5 # estimated cost
 
 ```  
 
@@ -96,6 +102,7 @@ Spider samples have been collected by Douglas Boyes (Newcastle University and CE
   
   
 ```{r, echo = F}
+#Make a tibble of sampling effort, display it
 sampling_effort <- summary_fieldwork %>% 
   filter(SiteLampType != 'unlit') %>%
   filter(SiteLampType != 'LPS') %>%
