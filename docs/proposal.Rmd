@@ -81,7 +81,7 @@ cost_1_primer_set <- sum(spiders_df$Total) * 5 # estimated cost
   + Altered spider community composition and diet under streetlighting
   + Altered spider community composition and diet over time
   + Alterations in the phylogenetic structure of the networks, in both the genetic composition of the nodes and their interactions
-* *Projected cost:* To process `r n_spiders` dietary samples using a single primer pair would cost an estimated £`r cost_1_primer_set`, plus £`r n_spiders` for identifying spider legs.
+* *Projected cost:* The total cost if we used a single dietary primer pair would be approximately £`r cost_1_primer_set + n_spiders`, or £`r (cost_1_primer_set*2) + n_spiders` if we used two dietary primer pairs.
 * *Possible journal:* It depends on how interesting the findings end up being, but potentially Ecology Letters. If we have interesting findings and can make a solid reproducible tool then it could get higher.
 
 
@@ -123,33 +123,24 @@ kable(spiders_df, caption = "The number of individual spiders captured per treat
 
 
 # Hypotheses
-* Spider-prey networks show significant structural differences (in the metrics 'nestedness', 'modularity' and 'niche overlap') between lit and unlit sites, and between HPS and LED lighting.
-* Spider species composition significantly differs between lit and unlit sites, and between HPS and LED lighting
+* Spider-prey networks show significant structural differences (in the metrics 'nestedness' and 'niche overlap') between lit and unlit sites, and between HPS and LED lighting. Decreases in nestedness in lit areas would show a loss of specialist foraging behaviours in that habitat, and increases in niche overlap would show the remaining spiders competing more for prey in lit areas.
+* Spider species composition significantly differs between lit and unlit sites, and between HPS and LED lighting. Lit sites show a lower diversity of spiders, as sensitive species are outcompeted by more robust ones.
 * Spiders show phylogenetic differences in their prey preference between lit and unlit sites, and between HPS and LED lighting.
-
-```{r }
-#I would include something about why you expect structural differences 
-#specifically and what that might mean for the community. Why would lighting 
-#create a more or less modular/nested network and what does it mean if that's 
-#the case? It's so easy to say the network structure would be different but that 
-#might be biologiaclly meaningless. That's kind of the problem with network 
-#analysis - I know, I sound like a broken record!
-```
-
 
 
 \pagebreak
 
 # Methods
-Each spider will be identified through DNA barcoding, and the diet of each spider will be identified through DNA metabarcoding. If possible, spider identification should take place using Guelph's PacBio sequencer. This will provide higher-quality data than doing it in the UK, and it will be a better pilot for the Ghanaian data.  
-The diet of each individual spider will be analysed using an Illumina MiSeq in the UK, either using one or two PCR primer sets on DNA extracted from spider abdomens. Previous studies have typically used one primer set but we may use two for future Ghanaian work, depending on the results of ongoing pilot work and the volume of samples obtained in Ghana. Using two PCR primer sets will improve the quality of our data, but nearly double our overall molecular costs.  
+Each spider will be identified through DNA barcoding, and the diet of each spider will be identified through DNA metabarcoding. Spider identification should take place using Guelph's PacBio sequencer. This will provide higher-quality data than doing it in the UK, and it will be a better pilot for the Ghanaian data.  
+The diet of each individual spider will be analysed using an Illumina MiSeq in the UK, either using one or two PCR primer sets on DNA extracted from spider abdomens. All PCR primer sets have taxonomic biases, and so increasing the number of primer sets used helps to reduce the effect of these biases on the resulting data. Previous studies have typically used one primer set but we may use two for future Ghanaian work, depending on the volume of samples obtained in Ghana. Using two PCR primer sets will improve the quality of our data, but nearly double our overall molecular costs.  
 It's currently contentious if dietary metabarcoding data can be used quantitatively: most studies to date have simply looked at the presence or absence of a prey species within an individual predator, and then summed the frequency of occurrence ('FOO') in that predator species overall. We are able to say for example that 40% of the sequences recovered from an individual spider's diet belonged to *Drosophila melanogaster*, but it's controversial if we should then use this relative read abundance ('RRA') as a proxy for the percentage of that spider's dietary biomass that was made up by *D. melanogaster*. A high-profile paper [@deagle_counting_2018] recently made a strong argument in favour of using RRA instead of FOO, but theres no consensus yet. I propose using both approaches and then comparing the results.  
 Returned sequencing data will be used to create bipartite ecological networks of spiders eating other arthropods, with each arthropod species (spider or prey) being a node in the network. Data from individual spiders will be pooled from all lit HPS and LED sites, and from all of the unlit HPS and LED sites. This will provide 4 datasets: the HPS lit, HPS unlit, LED lit, and LED unlit sites (Table 2). As the unlit sites were spatially matched to the lit ones, they can provide controls for the appropriate lighting type (i.e. HPS unlit sites are the controls for the HPS lit ones). The datasets can then be further split by month of capture, if desired.  
+  
 Analysis of the generated data will include the development of bioinformatic pipelines, and I propose trying to generate some new analytical methods for incorporating phylogenetic information into ecological networks by collaborating with Chris Terry (Zoology). Previous work has taken place looking at changes in a community's phylogenetic diversity [@grab_agriculturally_2019], and these methods could be built upon to look at changes in spider communities and their diets. The bioinformatics pipeline and analytical methods are expected to prove useful for work on Ghanaian samples in future.
 
 
 # Costs
-The Centre for Biodiversity in Guelph currently quotes US$1/sample for DNA barcoding. For the dietary analysis, using one primer set would cost around £`r cost_1_primer_set`, for two primer sets it would cost £`r cost_1_primer_set * 2`.
+The Centre for Biodiversity in Guelph currently quotes US$1/sample for DNA barcoding. For the dietary analysis, using one primer set would cost around £`r cost_1_primer_set`, for two primer sets it would cost £`r cost_1_primer_set * 2`. So the estimated total costs would be £`r cost_1_primer_set + n_spiders` for one dietary primer pair, or £`r (cost_1_primer_set*2) + n_spiders` for two dietary primer pairs.
 
 # Schedule
 The extraction of spider dietary DNA will take around 2.5 weeks. Turnaround times from the sequencing of dietary samples and spider identification samples are unknown, but data analysis should be complete by late 2019.
