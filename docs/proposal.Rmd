@@ -74,29 +74,20 @@ cost_1_primer_set <- sum(spiders_df$Total) * 5 # estimated cost
 
 ```  
 
-# Summary
-* *Projected cost:* To process `r n_spiders` dietary samples using a single primer pair would cost an estimated £`r cost_1_primer_set`, plus whatever Guelph's cost is for identifying spider legs.
-* *Possible findings:* 
-  + Changes in network structure and species composition under different UK streetlighting
+* *Goals*
+  + Provide practice to CRAG team in generating and analysing networks from metabarcoding data.
+  + Compare the effects of different types of streetlighting on spider communities and their diet.
+* *Expectations*
+  + Altered spider community composition and diet under streetlighting
+  + Altered spider community composition and diet over time
   + Alterations in the phylogenetic structure of the networks, in both the genetic composition of the nodes and their interactions
+* *Projected cost:* To process `r n_spiders` dietary samples using a single primer pair would cost an estimated £`r cost_1_primer_set`, plus £`r n_spiders` for identifying spider legs.
 * *Possible journal:* It depends on how interesting the findings end up being, but potentially Ecology Letters. If we have interesting findings and can make a solid reproducible tool then it could get higher.
-
-```{r}
-#Instead of starting with a summary start with the goals and expectations of the
-#study. Basically Charles will want to look at this and go "OK this is worth
-#pursuing"
-```
 
 
 # Background
 
-All research to date on the effects of artificial lighting on ecological interactions has taken a single-species approach, and the lack of published research on network-level processes under artificial lighting has been stated as a key priority [@sanders_how_2018]. Previous research on moths in Oxfordshire by MacGregor et al [-@macgregor_dark_2017] found moth abundance halved at artificially lit sites, with 25% lower species richness. Artificial lighting has been shown to have variable effects on the predation success of spiders [@heiling_why_1999; @frank_exploitation_2009; @yuen_artificial_2017; @willmott_guiding_2019]. The effects on spiders of such changes to prey availability and hunting ability could then be compounded by additional behavioural effects of lighting on the spiders themselves. We hypothesise that networks of grass-dwelling spiders and their prey will be modified by the introduction of artificial lighting.
-```{r}
-#Can you be specific about the "variable effects" I don't know what you mean and
-#it just sounds vague. What are the implications. Just becuase they have
-#different diet might not have any relevant meaning
-```
-
+All research to date on the effects of artificial lighting on ecological interactions has taken a single-species approach, and the lack of published research on network-level processes under artificial lighting has been stated as a key priority [@sanders_how_2018]. Previous research on moths in Oxfordshire by MacGregor et al [-@macgregor_dark_2017] found moth abundance halved at artificially lit sites, with 25% lower species richness. Artificial lighting has been shown to have positive effects on the predation success of some spiders [@heiling_why_1999; @frank_exploitation_2009 ; @willmott_guiding_2019], but negative on others [@yuen_artificial_2017]. The effects on spiders of changes to prey availability and hunting ability could then be compounded by additional behavioural effects of lighting on the spiders themselves.
 
 Spider samples have been collected by Douglas Boyes (Newcastle University and CEH) during his PhD fieldwork, by sweep-netting at roadside areas in Oxfordshire over multiple visits in February and April 2019. At each site one transect was walked under a streetlight, and another transect took place nearby in an unlit area to provide a spatially matched control. The lit areas were either lit by High-Pressure Sodium (HPS) or LED streetlights. See Table 1 for a summary of sampling effort. Each spider was collected into an individual tube, and so we have location and date data for every individual spider captured.
   
@@ -120,14 +111,9 @@ kable(sampling_effort, caption = "Visits to sites of each treatment, 2019")
 
 \pagebreak
   
-We propose identifying spider species through DNA barcoding. We have a sufficient number of individual spiders from each lighting type, and each month, to be able to create ecological networks of insectivory (see table 2 for numbers of individual spiders per grouping). We can pool our individual spiders into 4 groups depending on the treatment (HPS lit, HPS unlit, LED lit and LED unlit), and then further separate these groups into the two months of capture.
+We propose identifying spider species through DNA barcoding. We have a sufficient number of individual spiders from each lighting type, and each month, to be able to create ecological networks of insectivory (see table 2 for numbers of individual spiders per grouping). We can pool our individual spiders into 4 groups depending on the treatment (HPS lit, HPS unlit, LED lit and LED unlit).
 These samples can provide a pilot dataset to establish appropriate protocols as well as an interesting ecological study in their own right.
 
-```{r}
-#I'm not sure you should bother spliting the 2 months. I would just pool that
-#togetherto create a more resolved network. n=2 isn't enough to count as
-#replication really so you might as well just create a metaweb.
-```
 
   
 ```{r count_table, echo = F}
@@ -157,17 +143,13 @@ kable(spiders_df, caption = "The number of individual spiders captured per treat
 # Methods
 Each spider will be identified through DNA barcoding, and the diet of each spider will be identified through DNA metabarcoding. If possible, spider identification should take place using Guelph's PacBio sequencer. This will provide higher-quality data than doing it in the UK, and it will be a better pilot for the Ghanaian data.  
 The diet of each individual spider will be analysed using an Illumina MiSeq in the UK, either using one or two PCR primer sets on DNA extracted from spider abdomens. Previous studies have typically used one primer set but we may use two for future Ghanaian work, depending on the results of ongoing pilot work and the volume of samples obtained in Ghana. Using two PCR primer sets will improve the quality of our data, but nearly double our overall molecular costs.  
-It's currently contentious if dietary metabarcoding data can be used quantitatively: most studies to date have simply looked at the presence or absence of a prey species in an individual predator, and then summed the frequency of occurrence in that predator species overall ('FOO'). We can say that 40% of the sequences recovered from an individual spider's diet belonged to *Drosophila melanogaster*, but it's controversial if we should then use this relative read abundance ('RRA') as a proxy for the percentage of the spider's dietary biomass that was made up by *D melanogaster*. A high-profile paper [@deagle_counting_2018] recently made a strong argument in favour of using RRA instead of FOO, but theres no consensus yet. I propose using both approaches and then comparing the results.  
+It's currently contentious if dietary metabarcoding data can be used quantitatively: most studies to date have simply looked at the presence or absence of a prey species within an individual predator, and then summed the frequency of occurrence ('FOO') in that predator species overall. We are able to say for example that 40% of the sequences recovered from an individual spider's diet belonged to *Drosophila melanogaster*, but it's controversial if we should then use this relative read abundance ('RRA') as a proxy for the percentage of that spider's dietary biomass that was made up by *D. melanogaster*. A high-profile paper [@deagle_counting_2018] recently made a strong argument in favour of using RRA instead of FOO, but theres no consensus yet. I propose using both approaches and then comparing the results.  
 Returned sequencing data will be used to create bipartite ecological networks of spiders eating other arthropods, with each arthropod species (spider or prey) being a node in the network. Data from individual spiders will be pooled from all lit HPS and LED sites, and from all of the unlit HPS and LED sites. This will provide 4 datasets: the HPS lit, HPS unlit, LED lit, and LED unlit sites (Table 2). As the unlit sites were spatially matched to the lit ones, they can provide controls for the appropriate lighting type (i.e. HPS unlit sites are the controls for the HPS lit ones). The datasets can then be further split by month of capture, if desired.  
 Analysis of the generated data will include the development of bioinformatic pipelines, and I propose trying to generate some new analytical methods for incorporating phylogenetic information into ecological networks by collaborating with Chris Terry (Zoology). Previous work has taken place looking at changes in a community's phylogenetic diversity [@grab_agriculturally_2019], and these methods could be built upon to look at changes in spider communities and their diets. The bioinformatics pipeline and analytical methods are expected to prove useful for work on Ghanaian samples in future.
 
-```{r}
-#I bet this is more detail than Charles cares about but that's fine :)
-```
 
 # Costs
-The Centre for Biodiversity in Guelph currently quotes US$1/sample. 
-For the dietary analysis, using one primer set would cost around £`r cost_1_primer_set`, for two primer sets it would cost £`r cost_1_primer_set * 2`.
+The Centre for Biodiversity in Guelph currently quotes US$1/sample for DNA barcoding. For the dietary analysis, using one primer set would cost around £`r cost_1_primer_set`, for two primer sets it would cost £`r cost_1_primer_set * 2`.
 
 # Schedule
 The extraction of spider dietary DNA will take around 2.5 weeks. Turnaround times from the sequencing of dietary samples and spider identification samples are unknown, but data analysis should be complete by late 2019.
