@@ -12,6 +12,8 @@ library(tidyr)
 library(igraph)
 ```
 
+Some thoughts on how, if we can find the phylogenetic distance between each pair of nodes within a network, we can then look at the levels of specialisation within a network (and compare this between networks).
+
 In this document I refer to predators and prey, but they could really refer to any two levels of a bipartite network. For simplicity, I'm here keeping it a binary network. In this dummy dataset we have data on ecological interactions, and the phylogenetic distance between all nodes (the measure of which is TBD).
 
 If we can calculate the maximum potential phylogenetic diversity of ecological interactions, then we can calculate the observed phylogenetic diversity and divide it.
