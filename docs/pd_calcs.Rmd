@@ -1,0 +1,181 @@
+---
+title: "Network phylogenetic diversity thoughts"
+author: "David Hemprich-Bennett"
+
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(igraph)
+```
+
+In this document I refer to predators and prey, but they could really refer to any two levels of a bipartite network. For simplicity, I'm here keeping it a binary network. In this dummy dataset we have data on ecological interactions, and the phylogenetic distance between all nodes (the measure of which is TBD).
+
+If we can calculate the maximum potential phylogenetic diversity of ecological interactions, then we can calculate the observed phylogenetic diversity and divide it.
+
+# Questions / issues
+ * If genetic distance goes from 0-1, what would '1' mean? Presumably it should be the last universal common ancestor (LUCA), and if comparing two networks then 1 should be LUCA of all nodes in both networks. This could be very important for networks such as insectivorous arthropods, less so for herbivory etc.
+ * Can we use the new iNEXT-ish package to calculate the genetic diversity of a given network level?
+ *PD will likely be tougher to calculate for multiple genes (e.g. easy enough to calculate for insectivory/carnivory as we're looking at CO1, tricky if we're looking at herbivory and so have insect CO1 and plant ITS2)
+
+```{r add_data}
+set.seed(123)
+# create the names for predator and prey
+predators <- paste0('Pred', seq(1,8))
+prey <- paste0('Prey', seq(1,20))
+allnodes <- c(predators, prey)
+
+# All of the pairwise genetic distances
+pd_list <- as.data.frame(t(combn(allnodes, 2)))
+colnames(pd_list) <- c('Node_1', 'Node_2')
+pd_list$dist <- runif(nrow(pd_list)) # This could currently cause some issues as pred x - prey y can be given a different value from prey y - pred 1 in a different row.  
+
+# network 1
+net1 <- tidyr::crossing(predators, prey) %>%
+  mutate(interaction = sample(c(0,1), nrow(.), replace = T, prob = c(0.7, 0.3))) %>%
+  filter(interaction == 1) %>%
+  select(-interaction)
+
+
+# network 2, with slightly fewer links
+net2 <- tidyr::crossing(predators, prey) %>%
+  mutate(interaction = sample(c(0,1), nrow(.), replace = T, prob = c(0.8, 0.2))) %>%
+  filter(interaction == 1) %>%
+  select(-interaction)
+
+```
+
+Lets plot the two networks
+
+Network 1
+```{r}
+net1_mat <- igraph::get.adjacency(graph.data.frame(net1), sparse = F)
+
+
+bipartite::plotweb(t(net1_mat))
+
+```
+
+Network 2
+```{r}
+net2_mat <- igraph::get.adjacency(graph.data.frame(net2), sparse = F)
+bipartite::plotweb(t(net2_mat))
+```
+
+We can easily obtain the distances of the interacting nodes from one another in a single network by using
+
+```{r} 
+# Theres likely a better way to do this, but its simplest for now.
+pd_summary <- pd_list %>%
+  unite(interaction, Node_1, Node_2, remove = F)
+
+net1_realised <- net1 %>%
+  unite(interaction, predators, prey, remove = F) %>%
+  left_join(pd_summary) 
+
+head(net1_realised)
+```
+
+Do we now want to look at the potential and realised pd diversity for each prey consumed per predator?
+
+First filter for the distance between prey nodes only
+```{r}
+preydists <- pd_summary %>%
+  filter(grepl('Prey', Node_1))%>%
+  filter(grepl('Prey', Node_2))#%>%
+
+head(preydists)
+mean(preydists$dist)
+
+```
+For now we'll filter only for items consumed by predator 1
+```{r}
+
+pred1_dists <- net1 %>%
+  filter(predators == 'Pred1') %>%
+  expand(prey, prey) %>%
+  filter(! prey == prey1) %>%
+  unite(interaction, prey, prey1) %>%
+  left_join(preydists) %>% # Returns some na rows which we have to remove. CHECK THIS
+  filter(!is.na(Node_1))
+
+head(pred1_dists)
+mean(pred1_dists$dist)
+```
+
+Mean distance between available prey is `r mean(preydists$dist)` but the mean distance between the prey of predator 1 is `r mean(pred1_dists$dist)`. As predator 1 has a higher genetic diversity in its prey than expected, it looks like it's not hunting in a taxonomically conserved manner. I THINK.
+
+
+We're not after a measure of diversity of interactions but the frequency of conserved / non-conserved interactions. I.e. how frequently do animals interact with a smaller genetic distance of partners than would be expected by chance.
+
+```{r}
+mean(pred1_dists$dist) / mean(preydists$dist)
+```
+This value is (just) greater than 1
+Lets put the above in a function (maybe later try and use it with purr)
+```{r}
+pred_dists <- function(network, prey_dists, node){
+  if(!node %in% network$predators){
+    break('Error, desiredpredator not found')
+  }
+  node_dists <- network %>%
+  filter(predators == node) %>%
+  expand(prey, prey) %>%
+  filter(! prey == prey1) %>%
+  unite(interaction, prey, prey1) %>%
+  left_join(prey_dists, by = 'interaction') %>% # Returns some na rows which we have to remove. CHECK THIS
+  filter(!is.na(Node_1))
+
+
+meandist <- mean(node_dists$dist) # the mean distance found in that predators diet
+#print(meandist)
+overallmean <- mean(prey_dists$dist) # the mean distance available to it
+#print(overallmean)
+met_value <- meandist / overallmean
+return(c(node, met_value))
+}
+```
+
+Now a function to use that on all the nodes in a network
+```{r}
+whole_net <- function(desired_net, desired_preydists){
+  net_allvals <- sapply(unique(desired_net$predators), function(x) pred_dists(network = desired_net, prey_dists = desired_preydists, node = x))
+  net_allvals <- t(net_allvals)
+  colnames(net_allvals) <- c('Node', 'Mean dist')
+  net_allvals <- as.data.frame(net_allvals)
+  net_allvals$`Mean dist` <- as.numeric(as.character(net_allvals$`Mean dist`))
+  net_allvals <- net_allvals %>%
+    filter(!is.na(`Mean dist`))
+  return(net_allvals)
+}
+
+```
+
+
+Now use it on net1
+
+```{r}
+net1_dists <- whole_net(desired_net = net1, desired_preydists = preydists)
+net1_dists
+net2_dists <- whole_net(desired_net = net2, desired_preydists = preydists)
+net2_dists
+```
+
+Then summarise the values returned
+```{r}
+net1_mean <- mean(as.numeric(net1_dists[,2]))
+net1_sd <- sd(as.numeric(net1_dists[,2]))
+net2_mean <- mean(as.numeric(net2_dists[,2]))
+net2_sd <- sd(as.numeric(net2_dists[,2]))
+
+outtable <- data.frame(mean =c(net1_mean, net2_mean),
+                       sd = c(net1_sd, net2_sd))
+rownames(outtable) <- c('Net1', 'Net2')
+
+knitr::kable(outtable)
+```
+
+We can see from this that the predators in Network 2 are less phylogenetically conserved than we would expect given the diversity of their available prey, but the predators in network 1 are more phylogenetically conserved than we would expect.
