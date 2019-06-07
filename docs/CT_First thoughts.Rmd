@@ -1,0 +1,177 @@
+---
+title: "Network phylogenetic diversity thoughts"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+author: "Chris Terry, based on David Hemprich-Bennett's doc"
+output: html_document
+---
+
+In this document I (Chris) are just having a play around with what Dave had in his 'pd_calcs' document
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(igraph)
+library(bipartite)
+library(bipartiteD3)
+library(ape)
+
+```
+
+Goals:
+
+If we can find the phylogenetic distance between each pair of nodes within a network, can we then look at the levels of phylogenetic specialisation within a network (and compare this between networks).
+
+Using binary networks (following Dave).
+
+Still assume that we have we have data on ecological interactions, and the phylogenetic distance between all nodes.
+
+## Some Papers:
+
+Jorge et al 2014 An integrated framework to improve the concept of resource specialisation https://doi.org/10.1111/ele.12347
+
+Vamosi et al 2014 Evolutionary ecology of specialization: Insights from phylogenetic analysis http://rspb.royalsocietypublishing.org/cgi/doi/10.1098/rspb.2014.2004
+
+Poisot, T., Canard, E., Mouquet, N., & Hochberg, M. E. (2012). A comparative study of ecological specialization estimators. Methods in Ecology and Evolution, 3(3), 537–544. https://doi.org/10.1111/j.2041-210X.2011.00174.x
+
+Rafferty, N. E., & Ives, A. R. (2013). Phylogenetic trait-based analyses of ecological networks. Ecology, 94(10), 2321–2333. https://doi.org/10.1890/12-1948.1
+
+- mixed-effect model approach 
+
+Verdú, M., & Valiente-Banuet, A. (2011). The relative contribution of abundance and phylogeny to the structure of plant facilitation networks. Oikos, 120(9), 1351–1356. https://doi.org/10.1111/j.1600-0706.2011.19477.x
+
+### Measuring specialisation
+
+Requires some estimate of the diversity of the community being sampled. 
+
+Will Doug have this information? Otherwise may have to assume distribution of prey species is the same across sites. Not 100% essential, but would be help a lot. 
+
+# Generating some fake data
+
+Following Dave's model, with a few simplifications.
+
+Just looking at within-prey phylogenetic diversity. i.e. not predator-prey distances
+
+Not sure that prey-pred phylogentic distance is that relevant (given that all preds are spiders, and most prey are insects, phylogentic distance will be equal most of the time!)
+
+
+```{r add_data}
+set.seed(123)
+
+n_prey = 20
+n_pred = 20
+
+# create the names for predator and prey
+
+PreySp = paste0('Prey', seq(11,n_prey+10))
+
+PreyPhylo<-rtree(n_prey, tip.label = PreySp )
+plot(PreyPhylo)
+
+PreyDistMatrix<-cophenetic.phylo(PreyPhylo)
+
+## 1-D phylogentic trait ordering:
+Phylo1D<-sort(prcomp(PreyDistMatrix)$x[,1])
+
+### Rescale to 0:1 range:
+
+ScalePhylo1D <- (Phylo1D-min(Phylo1D))/diff(range(Phylo1D))
+
+```
+
+### Random network
+
+This approach to generating a random network takes a window in the scaled 1-D phylogenbetic range. 
+
+Each predator is given a phylogenetic niche center and width. 
+
+This is super-basic, but means that nearby species are model likely to be eater by the same soecies, while allowing for some fairly large jumps too. Some kind of random walk through the phylogeny may generate a better dummy data set.
+
+There is no quantitive-ness in the interaction frequency of these networks!! So really they are just toy models.
+
+```{r}
+
+predators <- data.frame(PredSp = paste0('Pred', seq(11,n_pred+10)),
+                        NicheCenter = runif(n_pred), 
+                        NicheWidth = runif(n_pred, 0, 0.3))%>%
+  mutate(NicheMin = NicheCenter - NicheWidth, 
+         NicheMax = NicheCenter + NicheWidth)
+
+prey <- rownames_to_column(as.data.frame( ScalePhylo1D), var = 'PreySp')
+
+expand.grid(predators$PredSp, prey$PreySp) %>%
+  magrittr::set_colnames(c('PredSp', 'PreySp'))%>%
+  full_join(predators)%>%
+  full_join(prey)%>%
+  mutate(Interact = ScalePhylo1D < NicheMax & ScalePhylo1D>NicheMin  ,
+         NetworkID = 'Network1') -> Network
+
+
+Net1Mat<-Network%>%
+  frame2webs(c('PreySp', 'PredSp', 'NetworkID','Interact' ), 
+             emptylist = FALSE)
+
+
+PreyColours<- rainbow(n_prey, end = 0.8) ## !-D phylogentic placment informing colours
+names(PreyColours)<-names(ScalePhylo1D)
+
+Net1Mat$Network1%>%
+  bipartite_D3(colouroption = 'manual',
+               PrimaryLab = 'Food',
+               SecondaryLab = 'Spider',
+               NamedColourVector = PreyColours,
+               SortPrimary = names(PreyColours),
+               SortSecondary = predators$PredSp[order(predators$NicheCenter)],
+               ColourBy = 1)
+
+```
+
+Note:
+
+Here I used phylogenetic structuring, but no real difference to using trait differences. 
+
+### How to convert this into a metric of phylogenetic specialisation?
+
+From the network and knowledge of the prey phylogeny, possible to calcualte estimation of phylogenetic niche width: 
+
+```{r}
+LongFormPreyDist<- PreyDistMatrix%>%
+  as.data.frame()%>%
+  rownames_to_column('PreySp')%>%
+  gather('PreySp2','PhyloDist',  -PreySp)%>%
+  filter(PreySp2 != PreySp)
+
+PredSpec<- data.frame(N_Prey =colSums(Net1Mat$Network1), 
+                      MaxDist = NA, 
+                      MeanDist=NA )%>%
+  rownames_to_column('PredSp')
+
+for(Pred in 1: n_pred){
+  
+  Prey<-which(Net1Mat$Network1[, Pred]>0)
+  
+  if(length(Prey)<2){
+    PredSpec$MaxDist[Pred] = 0
+    PredSpec$MeanDist[Pred] = 0
+  }else{
+    LongFormPreyDist%>%
+      filter(PreySp %in% names(Prey),
+             PreySp2 %in% names(Prey))%>%
+      summarise(MEAN = mean(PhyloDist),
+                MAX = max(PhyloDist))-> yyy
+    
+    PredSpec$MaxDist[Pred] = yyy$MAX
+    PredSpec$MeanDist[Pred] = yyy$MEAN
+  }
+}
+
+PredSpec$TRUE_NICHE_WIDTH <-predators$NicheWidth
+```
+
+Signal comes through, but almost totally obscured by number of prey...
+```{r}
+par(mfrow= c(1,3))
+
+plot(PredSpec$MaxDist, PredSpec$TRUE_NICHE_WIDTH)
+plot(PredSpec$MeanDist, PredSpec$TRUE_NICHE_WIDTH)
+plot(PredSpec$N_Prey, PredSpec$TRUE_NICHE_WIDTH)
+```
