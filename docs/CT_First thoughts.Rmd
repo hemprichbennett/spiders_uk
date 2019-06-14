@@ -57,8 +57,10 @@ Not sure that prey-pred phylogentic distance is that relevant (given that all pr
 ```{r add_data}
 set.seed(123)
 
-n_prey = 200
-n_pred = 200
+n_prey = 89
+n_pred = 89
+
+if(n_prey>89 | n_pred>89){warning('Code below relies on alpha-numeric ordering - if above 89 species, will misorder...')}
 
 # create the names for predator and prey
 
@@ -114,6 +116,8 @@ Net1Mat<-Network%>%
 PreyColours<- rainbow(n_prey, end = 0.8) ## !-D phylogentic placment informing colours
 names(PreyColours)<-names(ScalePhylo1D)
 
+if(n_pred<30  & n_prey < 30){
+
 Net1Mat$Network1%>%
   bipartite_D3(colouroption = 'manual',
                PrimaryLab = 'Food',
@@ -122,7 +126,7 @@ Net1Mat$Network1%>%
                SortPrimary = names(PreyColours),
                SortSecondary = predators$PredSp[order(predators$NicheCenter)],
                ColourBy = 1)
-
+}
 ```
 
 Note:
@@ -176,4 +180,9 @@ plot(PredSpec$MeanDist, PredSpec$TRUE_NICHE_WIDTH)
 plot(PredSpec$N_Prey, PredSpec$TRUE_NICHE_WIDTH)
 plot(PredSpec$MaxDist, PredSpec$N_Prey)
 plot(PredSpec$MeanDist, PredSpec$N_prey)
+```
+
+
+```{r}
+lm(data = PredSpec, TRUE_NICHE_WIDTH~  MaxDist+N_Prey) %>% summary
 ```
