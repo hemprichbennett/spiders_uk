@@ -1,0 +1,39 @@
+---
+title: "Spider sequencing numbers"
+author: "David Hemprich-Bennett"
+date: "14/06/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo = F}
+n_spiders <- 324 # This may be slightly wrong: to be checked by Abby after finishing extractions!
+```
+We have `r n_spiders` samples
+
+```{r, echo = F}
+# the number of extracts we NEED to plate,
+n_extracts <- n_spiders * 2
+```
+For our experiment, we want to use 2 primer pairs per spider (ZBJ and ANML). So we need to use `r n_extracts` wells as a minimum
+
+```{r, echo = F}
+wells_per_plate <- 96
+
+# the number of plates (to a decimal) that we'll need for n_extracts
+n_plates <- n_extracts / wells_per_plate
+```
+
+To put all of those extracts in `r wells_per_plate`-well plates, we'll need to use `r n_plates` plates.
+
+```{r, echo = F}
+# The number of wells that we're going to need to fill up 
+max_wells <- ceiling(n_plates) * wells_per_plate
+
+to_fill <- max_wells - n_extracts
+```
+
+However theres no point leaving any empty wells, so we should send them `r ceiling(n_plates)` plates, and fill the `r to_fill` extra wells with blanks, and maybe a few PCR replicates, depending on space.
