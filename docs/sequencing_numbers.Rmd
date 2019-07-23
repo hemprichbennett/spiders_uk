@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r, echo = F}
-n_spiders <- 324 # This may be slightly wrong: to be checked by Abby after finishing extractions!
+n_spiders <- 396 # This may be slightly wrong: to be checked by Abby after finishing extractions!
 ```
 We have `r n_spiders` samples
 
@@ -37,3 +37,12 @@ to_fill <- max_wells - n_extracts
 ```
 
 However theres no point leaving any empty wells, so we should send them `r ceiling(n_plates)` plates, and fill the `r to_fill` extra wells with blanks, and maybe a few PCR replicates, depending on space.
+
+```{r}
+ZBJ_samples <- 4*95
+ANML_samples <- 5*95
+ANML_replicates <- ANML_samples - n_spiders
+```
+
+
+It looks like we may as well fill `r 4*95` wells with samples for ZBJ, and `r 5*95` wells with ANML. This would mean that we have to include `r (5*95)-n_spiders` PCR replicates of ANML.
