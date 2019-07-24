@@ -1,48 +1,162 @@
 ---
 title: "Spider sequencing numbers"
 author: "David Hemprich-Bennett"
-date: "14/06/2019"
+date: "24/06/2019"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Disable code echoing and messaging, as they clutter the document
+knitr::opts_chunk$set(echo = F, message = F)
+
+library(tidyverse)
+library(lubridate)
+library(here)
+library(knitr)
 ```
 
-```{r, echo = F}
-n_spiders <- 396 # This may be slightly wrong: to be checked by Abby after finishing extractions!
+
+```{r summary_setup}
+# Now lets use the field data
+
+summary_fieldwork <- read.csv(here("data", "raw_data", "field_data", "spider_fielddata.csv"),
+  header = T,
+  stringsAsFactors = F
+)
+
+# Rearrange the summary_fieldwork df nicely for subsequent use
+summary_fieldwork <- summary_fieldwork %>%
+  # Sort the dates
+  mutate(Date = dmy(Date)) %>% 
+  mutate(day = day(Date),
+         month = month(Date),
+         month_name = month(Date, label = T),
+         year = year(Date)) %>%
+  # replace values with better names: na can be a bad string to have!
+  mutate(SiteLampType = gsub("na", "unlit", SiteLampType)) %>%
+  # Get rid of the unwanted columns
+  select(SpiderCount, SiteName, Treatment, SiteLampType, Date, year, month, 
+         month_name, day,Reference, VisitNum) 
+
+
+
+  
+
+# make a df which just has the site names and the overall treatments for the locale
+visit_treatments <- summary_fieldwork %>%
+  select(SiteName, SiteLampType, VisitNum) %>%
+  rename(location_type = SiteLampType) %>%
+  filter(location_type != 'unlit')
+
+# As the summary fieldwork df doesn't currently provide information on the
+# treatment of the unlit sites, add those treatments to summary_fieldwork now 
+# using the visit_treatments df we just made
+summary_fieldwork <- summary_fieldwork %>%
+  left_join(visit_treatments)
+
 ```
-We have `r n_spiders` samples
 
-```{r, echo = F}
-# the number of extracts we NEED to plate,
-n_extracts <- n_spiders * 2
-```
-For our experiment, we want to use 2 primer pairs per spider (ZBJ and ANML). So we need to use `r n_extracts` wells as a minimum
 
-```{r, echo = F}
-wells_per_plate <- 96
-
-# the number of plates (to a decimal) that we'll need for n_extracts
-n_plates <- n_extracts / wells_per_plate
+```{r labdata_load}
+# Load in Abby's lab data
+lab_data <- read.csv(
+  here('data', 'raw_data', 'lab_data', 'DNA Extractions Master.csv'),
+  stringsAsFactors = F)
 ```
 
-To put all of those extracts in `r wells_per_plate`-well plates, we'll need to use `r n_plates` plates.
 
-```{r, echo = F}
-# The number of wells that we're going to need to fill up 
-max_wells <- ceiling(n_plates) * wells_per_plate
+```{r combine}
+# Combine all the data
 
-to_fill <- max_wells - n_extracts
+combined_data <- lab_data %>%
+  rename(Reference = Sample.Collection.ID) %>%
+  left_join(summary_fieldwork)
+
 ```
 
-However theres no point leaving any empty wells, so we should send them `r ceiling(n_plates)` plates, and fill the `r to_fill` extra wells with blanks, and maybe a few PCR replicates, depending on space.
+
+---
+```{r badextracts}
+bad_extracts <- combined_data %>% 
+  filter(is.na(combined_data$SiteName)) %>%
+  select(Reference, Sample.Unique.ID, BDNA.Conc.ng.uL, Storage.Box,
+         Storage.Location)
+knitr::kable(bad_extracts, 
+             caption = 'The extracts which don\'t match a location in the
+             field datasheet')
+```
+
+```{r choose_extracts}
+to_sequence <- combined_data %>%
+  # Get rid of Upper Edington as we it has two lighting types. Also specify
+  # that we want to keep control: as it has na values for SiteName and 
+  # location_type, it will get filtered out if we don't explicitly keep it
+  filter(Sample.Unique.ID == 'CONTROL' | SiteName != "Upper Edington") %>% 
+  # also remove LPS, whilst keeping the control
+  filter(Sample.Unique.ID == 'CONTROL' | location_type != 'LPS') 
+
+summary_to_seq <- to_sequence %>%
+  group_by(location_type, SiteLampType) %>%
+  summarise(`Number of extracts` = n())
+
+kable(summary_to_seq, caption = 'Treatments of the spiders to sequence')
+```
+
 
 ```{r}
-ZBJ_samples <- 4*95
-ANML_samples <- 5*95
-ANML_replicates <- ANML_samples - n_spiders
+n_spiders <- nrow(to_sequence)
+```
+We have `r n_spiders` samples, including the extraction control.
+
+```{r}
+# the number of extracts we NEED to plate per primer ,
+n_extracts <- n_spiders * 2
+```
+For our experiment we want to use 2 primer pairs per spider (ZBJ and ANML). So we need to use `r n_extracts` wells as a minimum.
+
+```{r}
+wells_per_plate <- 95
+
+# the number of plates (to a decimal) that we'll need for each primer pair
+n_plates_per_primer <- n_spiders / wells_per_plate
+
+# The number of wells that we're going to need to fill up 
+max_wells <- ceiling(n_plates_per_primer) * wells_per_plate
+
+to_fill <- max_wells - n_spiders
+
 ```
 
+Things are made more difficult as we shouldn't mix primers on a plate. So we'll have a lot of empty wells to fill out per primer set, as we only need to use `r round(n_plates_per_primer, digits = 2)` plates per primer set, leaving `r to_fill` wells empty. We'll have to use at least `r ceiling(n_plates_per_primer)` plates per primer set, and then fill the empty wells with PCR replicates. 
 
-It looks like we may as well fill `r 4*95` wells with samples for ZBJ, and `r 5*95` wells with ANML. This would mean that we have to include `r (5*95)-n_spiders` PCR replicates of ANML.
+```{r}
+n_ZBJ_plates <- 4
+ZBJ_samples <- n_ZBJ_plates * 95
+ZBJ_replicates <- ZBJ_samples - n_spiders
+n_ANML_plates <- 5
+ANML_samples <- n_ANML_plates * 95
+ANML_replicates <- ANML_samples - n_spiders
+
+```
+
+It looks like we may as well fill `r n_ZBJ_plates` plates with samples for ZBJ, and `r n_ANML_plates` plates with ANML.
+This will give `r ZBJ_samples` wells with samples for ZBJ, and `r 5*95` wells with ANML. This means that we have to include `r ZBJ_replicates` PCR replicates of ZBJ and `r ANML_replicates` PCR replicates of ANML. This will give lots of replicates of ANML, which allows some insight into how effective (or not) PCR replicates are.
+
+
+```{r}
+# Add the number of extracts to be sequenced per spider for each primer pair
+conc_order <- order(to_sequence$BDNA.Conc.ng.uL, decreasing = T)
+to_sequence$n_ANML <- 1
+to_sequence$n_ANML[conc_order[1:ANML_replicates]] <- 2
+to_sequence$n_ZBJ <- 1
+to_sequence$n_ZBJ[conc_order[1:ZBJ_replicates]] <- 2
+
+# rearrange column orders
+to_sequence <- to_sequence %>%
+  select(n_ANML, n_ZBJ, everything())
+
+write.csv(to_sequence, here('data', 'to_sequence.csv'),
+          row.names = F)
+
+```
+
