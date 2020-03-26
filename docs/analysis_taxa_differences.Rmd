@@ -1,7 +1,7 @@
 ---
 title: "Spider sequencing comparison"
 author: "David Hemprich-Bennett"
-date: "25/03/2020"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: bookdown::html_document2
 ---
 
@@ -16,11 +16,13 @@ options(scipen=99999)
 options(warnPartialMatchArgs = TRUE)
 ```
 
-We now have data back from the spider diet sequencing: hooray! We don't yet have identifications for the spiders themselves, but even in the absence of these we can do a lot with the data. We sequenced each spider using two primer pairs (ANML and ZBJ), and are interested in how complimentary they are, or if they both tell us basically the same thing. For a subset of spiders we also did PCR replicates: where the same spider was amplified and sequenced TWICE for each PCR primer, rather than once. This can tell us a bit about how replicable the whole process is.
+We now have data back from the spider diet sequencing: hooray! We don't yet have identifications for the spiders themselves, but even in the absence of these we can do a lot with the data. So far I've only made summary figures: I'm sure for the key findings we can do statistical tests etc, but right now everything is very exploratory. 
+
+To provide the methods in brief: we had a lot of spiders from Oxfordshire and Berkshire, and we sequenced each spider using two primer pairs (ANML and ZBJ), and are interested in how complimentary they are, or if they both tell us basically the same thing. For a subset of spiders we also did PCR replicates: where the same spider was amplified and sequenced TWICE for each PCR primer, rather than once. This can tell us a bit about how replicable the whole process is.
   
 The ZBJ primers have been in use very heavily for nine years, but are frequently criticised. ANML is one of the new kids on the block.
-
-
+<br>
+<br>
 ```{r setup, warning = FALSE}
 
 library(tidyverse)
@@ -72,28 +74,28 @@ all_data <- left_join(meta_edgelist, field_data,
          diet_Order = fct_rev(diet_Order))
 ```
 
-Heres a little summary of the number of reads and ASVs (basically a haplotype) passing QC for each primer pair. Unsurprisingly as we were using generalist arthropod primers, most of the sequencing effort was used in detecting spider DNA, presumably the DNA of the consumer itself. N.B. the information below is just classifying whether a read is classified as 'Araneae' or not: it isn't classifying it as the consumer species or not. So some of those araneae reads may actually be dietary DNA, rather than the DNA of the predator. I'll make some more complex code when we have the identity of the consumers confirmed by BOLD.
-
-
-```{r basic summary}
-# quick summary of the spider/non-spider reads and ASVs
+In Table \@ref(tab:basic-summary-table) is a little summary of the number of reads, ASVs (basically a haplotype) and assigned species passing QC for each primer pair. Unsurprisingly as we were using generalist arthropod primers, most of the sequencing effort was used in detecting spider DNA, presumably the DNA of the consumer itself. N.B. the information below is just classifying whether a read is classified as 'Araneae' or not: it isn't classifying it as the consumer species or not. So some of those araneae reads may actually be dietary DNA, rather than the DNA of the predator. I'll make some more complex code when we have the identity of the consumers confirmed by BOLD.
+<br>
+<br>
+```{r basic-summary-table}
+# quick summary of the spider/non-spider reads, ASVs and Species
 
 summary_info <- all_data %>%
   mutate(araneae = ifelse(diet_Order == 'Araneae', T, F)) %>%
   group_by(primer, araneae) %>%
   summarise(n_reads = sum(n_copies),
-            n_asvs = length(unique(diet_asv)))
+            n_asvs = length(unique(diet_asv)),
+            n_species = length(unique(diet_Species)))
 
-knitr::kable(summary_info)
+knitr::kable(summary_info, caption = 'Summary of sequencing effort')
 ```
 
 
 
-
 # Overall taxonomic composition
-
+<br>
 One thing we're interested in is the overall taxonomic bias of the primers: do they preferentially amplify some taxa over others? While we have no prior information on what the spiders consumed, we can look at the different taxonomic groups which were detected in each primer. This is interesting both as a proportion of the overall reads returned (Figure \@ref(fig:copiesassigned)), the proportion of unique ASVs detected (Figure \@ref(fig:fig-unique-asvs)), and the proportion of interactions detected (each time an ASV was found present in an individual spider, Figure \@ref(fig:fig-interactions)).
-
+<br>
 N.B. the below figures omit all spider DNA for now. There likely is some inter-spider predation, but I've not yet made the code fancy enough to distinguish this from detecting the consumer itself. Baby steps.
 ```{r taxonomic breakdown, include = F}
 # Compare the taxonomic composition of the overall dataset for each primer -----
@@ -170,35 +172,77 @@ ggsave(here("figures", "primer_biases", "overall_primer_biases.jpg"),
 
 ```
 
-
+<br>
 ```{r copiesassigned, fig.width= 10, fig.cap="The number of reads assigned to a given taxonomic Order."}
 copies_plot
 ```
-  
+<br>
 We know that ZBJ gave us more non-Araneae reads than ANML (`r summary_info$n_reads[which(summary_info$araneae==F & summary_info == 'ZBJ')]` versus 
 `r summary_info$n_reads[which(summary_info$araneae==F & summary_info == 'ANML')]`), but it appears a lot of those reads were assigned to Diptera (Figure \@ref(fig:copiesassigned)). ZBJ have frequently been criticised for over-amplifying Diptera and Lepidoptera. We can't say that they're over-amplifying Diptera (it *could* be that ANML are awful for them), but that fits with a lot of the literature.  In addition, we clearly detect quite a few orders with ZBJ that we don't detect with ANML.
-
+<br>  
+  
 ***  
   
+<br>
 ```{r fig-unique-asvs, fig.width= 10, fig.cap="The number of unique ASVs detected per primer and Order."}
 unique_asvs_plot
 ```
-
+<br>
 While Lepidoptera weren't over-represented in ZBJ in terms of reads (Figure \@ref(fig:copiesassigned)), it appears that they are in terms of the number of unique ASVs detected (Figure \@ref(fig:fig-unique-asvs)). In Figure \@ref(fig:copiesassigned) we see that across the whole pool of spiders, there a high sequence diversity of Lepidoptera, Diptera and Coleoptera for the ZBJ primers. From this plot alone we can't see if its that they're preferentially amplifying these taxa, or if the species consumed had more intraspecific genetic diversity at this locus than the ANML. Or if the inverse is true for ANML. All are possible, and could lead to over/underestimating those taxas importance in a network.
+<br>  
   
 ***
   
+<br>  
 ```{r fig-interactions, fig.width= 10, fig.cap="The number of (binary) interactions between a spider and an ASV detected per primer and Order"}
 overall_asvs_plot
 ```
-  
+<br>
 Finally, Figure \@ref(fig:fig-interactions) gives a similar impression to that of Figure \@ref(fig:fig-unique-asvs). Here we see what, if we were to class each ASV as a node in a network, would be the number of interactions seen per taxa. Diptera, Coleoptera and Lepidoptera dominate for ZBJ, while ANML is more evenly spread, but over a smaller taxonomic diversity.
+<br>
+The information above where the taxa are only identified to Order level and then the ASVs are potentially used as nodes is interesting to us as depending on the completeness of our Ghanaian library, we could have to do that with our Ghanaian networks. But because these spiders are from the UK we were actually able to identify most of the ASVs to species level. So how does that data compare to the ASV-level data? Looking at this can give us a basic insight into how reliable such a technique would be.
+<br>  
+On the most basic level, when we exlude any ASVs assigned to 'Araneae' theres a tolerable correlation between the number of ASVs detected in a consumer and the number of species detected in it, though it of course isn't 1:1 (Figure \@ref(fig:fig-basic-correlations)).
+<br><br>
+```{r fig-basic-correlations, fig.cap = "The number of ASVs and assigned species detected in each consumer by each primer"}
+all_data %>%
+  filter(diet_Order != 'Araneae') %>%
+  group_by(consumer_id, primer) %>%
+  summarise(n_species = length(unique(diet_Species)),
+            n_asvs = length(unique(diet_asv))) %>%
+  ggplot(aes(x = n_species, y = n_asvs))+
+  geom_point()+
+  geom_smooth(method = 'lm')+ 
+  facet_wrap(. ~ primer) +
+  theme_classic()+
+  scale_x_continuous(breaks = seq(1, 6, 1)) +
+  scale_y_continuous(breaks = seq(1, 6, 1)) +
+  labs(x = "Number of species detected in each consumer",
+       y = "Number of ASVs detected in each consumer")
+```
+<br>
+This is nice, but how does it break down by taxonomic group? We can look at the number of ASVs assigned to each detected species in each consumer (Figure \@ref(fig:fig-beeplot))), to see if theres a bias where a given taxonomic group gets lots of ASVs assigned to a single species. If so, we'd expect that any subsequent ecological analyses using ASVs instead of species would overestimate the importance of that taxonomic group. As we can see, it doesn't look too bad. The one caveat I would have straight away is that the taxa which show more than 1 tend to be the taxa which make a higher proportion of the dataset (e.g. Figure \@ref(fig:copiesassigned)). So its presumably likely that each species is likely to have only 1 ASV assigned to it, but the commoner orders are then likely to have their importance slightly overestimated. However in a huge dataset (like our Ghanaian one) this effect is likely to be watered down. I think.
+<br><br>
+```{r fig-beeplot, fig.cap = 'The distribution of the number of unique ASVs assigned per species in each spider'}
+# Organise the data
+all_data %>%
+  mutate(diet_Order = fct_rev(as_factor(diet_Order))) %>%
+  group_by(consumer_id, diet_Order, diet_Species, primer) %>%
+  summarise(n = length(unique(diet_asv))) %>%
+  # now plot it
+  ggplot(aes(x = diet_Order, y = n)) + 
+  # use a beeswarm plot, they're kinda useful for this
+  ggbeeswarm::geom_quasirandom(groupOnX = T) +
+  facet_wrap(. ~ primer) +
+  theme_classic()+
+  theme(# rotate the text by 45 degrees
+    axis.text.x = element_text(angle = 45, hjust = 1))+
+  labs(x = 'Taxonomic order', y = "Number of ASVs assigned per species in each spider")
+```
+<br>
+<br>
 
-The information above where the taxa are only identified to Order level and then the ASVs are potentially used as nodes is interesting, as depending on the completeness of our Ghanaian library, we could have to do that there. But because these spiders are from the UK we were actually able to identify most of the ASVs to species level. So how does that data compare to the ASV-level data?
-  
-ITS PROBABLY WORTH REPLICATING A LOT OF THIS FOR ASSIGNED SPECIES, RATHER THAN ASVS BECAUSE AS ECOLOGISTS WE CARE MORE ABOUT SPECIES THAN ASVS
-
-# Compare the results within-spider for the two primer pairs
+# Compare the results within-spider for the two primer pairs  
 
 ```{r}
 wide_data <- all_data %>%
@@ -264,16 +308,16 @@ species_detection <- ggplot(primer_summary, aes(
 
 ```
 
-We can plot the number of species interactions which were detected exclusively by either ANML, ZBJ, or both primer sets. This shows us fairly well if the primers were being complementary or not:
-
-
-```{r, species_detection_plot}
+We can plot the number of species interactions which were detected exclusively by either ANML or ZBJ, or were detected by both primer sets. This shows us fairly well if the primers were being complementary or not:
+<br>
+<br>
+```{r fig-species-detection, fig.cap= 'The detection of species by each primer pair'}
 species_detection
 ```
-
-The scale on the above plot is fairly skewed by the unsurprisingly high numbers for Araneae. Lets omit them and see what it shows:
-
-```{r, species_detection_nospider}
+<br>
+The scale on Figure \@ref(fig:fig-species-detection) is fairly skewed by the unsurprisingly high numbers for Araneae. Lets omit them and see what it shows:
+<br><br>
+```{r fig-species-detection-nospider, fig.cap= 'The detection of species by each primer pair, with all Araneae omitted'}
 primer_summary %>%
   filter(diet_Order != "Araneae") %>%
   ggplot(aes(x = diet_Order, y = detection,
@@ -292,7 +336,8 @@ primer_summary %>%
   labs(x = "Taxonomic Order", y = "Detected by")
 
 ```
-
+<br><br>
+Figure \@ref(fig:fig-species-detection-nospider) brings home a lot of what we saw earlier: we're detecting lots of Diptera and Lepidoptera species with ZBJ that we're not with ANML. There doesn't seem to be very many species detected with both primers. If this was a series of Venn diagrams (I could probably make some, I just haven't bothered to learn how to yet) then there woudn't be tonnes of overlap. So the good news is that the primers are probably complimentary, the bad news is that by using only one pair of primers we likely miss a lot of the interactions. In theory this could be because most of our sequencing depth and PCR reaction is being taken up by spider DNA (Table \@ref(tab:basic-summary-table)): if we we were using primers which didn't amplify spiders then a lot more of our amplification and sequencing would be devoted to prey DNA. As most of the work is being done on spider DNA, the prey DNA worked on can presumably be quite stochastic.
 
 <!--# Compare the replicates
 
