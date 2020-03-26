@@ -160,3 +160,39 @@ write.csv(to_sequence, here('data', 'to_sequence.csv'),
 
 ```
 
+```{r}
+ANML_duplicates <- to_sequence$Sample.Unique.ID[conc_order[1:ANML_replicates]]
+ZBJ_duplicates <- to_sequence$Sample.Unique.ID[conc_order[1:ZBJ_replicates]]
+
+plates <- expand.grid(column = c(1:12),
+            row = c('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'),
+            plate = c('ZBJ_01_01', 'ZBJ_01_02', 'ZBJ_01_03', 'ZBJ_01_04',
+                      'ANML_01_01', 'ANML_01_02', 'ANML_01_03', 'ANML_01_04', 'ANML_01_05'))
+
+```
+
+Now make the spreadsheet for Guelph:
+```{r}
+coord_data <- read.csv(here('data', 'raw_data', 'rough_coordinates.csv'), 
+                       stringsAsFactors = F)
+for_guelph <- to_sequence %>%
+  # Add coordinate data
+  left_join(coord_data) %>%
+  # Retain only the important columns
+  select("Sample.Unique.ID", "Date", "Coordinates") %>%
+  # Separate the Coordinates into lat/long
+  separate(Coordinates, into = c('Lat', 'Long'), sep = ', ') %>%
+  # Put the date into a more uniform format
+  mutate(Date = ymd(Date)) %>%
+  # Add some variables which they want
+  mutate(Collectors = 'Douglas Boyes',
+         Country = 'United Kingdom',
+         Kingdom = 'Animalia',
+         Phylum = 'Arthropoda',
+         Class = 'Arachnida',
+         Order = 'Araneae')
+
+write.csv(for_guelph, here('data', 'sequencing_planning', 'BOLD_fields.csv'),
+          row.names = F)
+```
+
