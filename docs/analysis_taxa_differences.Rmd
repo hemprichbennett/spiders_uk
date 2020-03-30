@@ -401,12 +401,16 @@ ZBJ_hits <- replicate_data %>%
 knitr::kable(ZBJ_hits, caption = 'The number of species interactions found in both or only one of the pair of ZBJ PCR replicates')
 ```
 
-Awkwardly, in Tables \@ref(tab:tab-ANML-replicates) and \@ref(tab:tab-ZBJ-replicates) we see that we rarely detect an interaction with both replicates. This could be due to the sequencing depth: as mentioned above, we're wasting most of our effort on spiders and so its quite stochastic what other template DNA we amplify and sequence. However the pattern is also true of the Araneae. This could potentially be due to intra-spider predation being detected sometimes, but not all the time. As we can see in figure \@ref(fig:spider-detection), most samples had only one spider species detected in them.
-The fact that we don't always see the same spider species detected in both pcr replicates above is also quite concerning, as we'd assume that they're going to be very easy to detect.
+Awkwardly, in Tables \@ref(tab:tab-ANML-replicates) and \@ref(tab:tab-ZBJ-replicates) we see that we rarely detect an interaction with both replicates. This could be due to the sequencing depth: as mentioned above, we're wasting most of our effort on spiders and so its quite stochastic what other template DNA we amplify and sequence.
+
+# Compare spider detection
+
+
+The above pattern of species often not being detected across replicates from the same sample is also true of the Araneae. This could potentially be due to intra-spider predation being detected sometimes, but not all the time. As we can see in Figure \@ref(fig:spider-detection), most samples had only one spider species detected in them. 
 
 
 
-```{r spider-detection, fig.cap="Violin plot showing the distribution of the number of spider species"}
+```{r spider-detection, fig.cap="Violin plot showing the distribution of the number of spider species detected in a sample"}
 n_spider_species <- all_data %>%
   select(-diet_asv) %>%
   filter(diet_Order == 'Araneae') %>%
@@ -423,12 +427,15 @@ ggplot(n_spider_species, aes(x = primer, y = n_species)) +
 
 ```
 <br>
-As an additional cause for concern, in table (inser table ref) we can see that the two sets of amplicons per spider don't always agree on what the COMMONEST spider species found in the sample was. It'll be interesting to get the spider IDs from BOLD soon to help us understand these issues more.
+This leads us to the final question: it seems logical to assume that the commonest species returned per sample, regardless of PCR replicate or primer, will be the spider whose abdomen we've mashed up. That is: if you extracted from a *Tegenaria domestica* and then used a load of different PCR primers and replicated them lots, you'd assume that for each well on the sequencing run your commonest species would be *Tegenaria domestica*. But is that true? 
+<br>
+In Table \@ref(tab:primer-spider-table) we can see that the two sets of amplicons per spider don't always agree on what the COMMONEST spider species found in the sample was. It'll be interesting to get the spider IDs from BOLD soon to help us understand these issues more.
 <br>
 ```{r}
 temp_subset <- all_data %>%
   filter(diet_Order == 'Araneae') %>%
-  select(diet_Species, n_copies, consumer_id, primer, pcr_replicate)
+  select(diet_Species, n_copies, consumer_id, primer, pcr_replicate,
+         best_confidence)
 
 it <- 1
 outlist <- list()
@@ -448,41 +455,62 @@ for(p in 1:length(unique(temp_subset$primer))){
   if(nrow(spider_subset) == 0){
     
     best_match <- NA
-    
+    best_conf <- NA
   }else if(nrow(spider_subset) == 1){
     
     best_match <- spider_subset$diet_Species
+    best_conf <- spider_subset$best_confidence
   }else if(nrow(spider_subset) > 1){
     
     spider_subset <- arrange(spider_subset, n_copies)
     #print(spider_subset)
     best_match <- spider_subset$diet_Species[1]
-  
+    best_conf <- spider_subset$best_confidence[1]
     }
 
-  outlist[[it]] <- data.frame(primer = desired_primer, sample_id = spider_id, best_match = best_match)
+  outlist[[it]] <- data.frame(primer = desired_primer, sample_id = spider_id, 
+                              best_match = best_match, best_spi_conf = best_conf)
   it <- it + 1
   }
 }
 
 matches_df <- do.call(rbind, outlist) %>%
   as.data.frame()%>%
-  pivot_wider(names_from = primer, values_from = best_match) %>%
-  mutate(agree = ifelse(ZBJ == ANML, T, F))
+  mutate_at(c('primer', 'sample_id', 'best_match'), as.character)
+  
+  
 
 agreement_table <- matches_df %>%
+  select(-best_spi_conf) %>%
+  pivot_wider(names_from = primer, values_from = best_match) %>%
+  mutate(agree = ifelse(ZBJ == ANML, T, F)) %>%
   group_by(agree) %>%
-  summarise(n = n())
-
-knitr::kable(agreement_table)
+  summarise(`Number of spiders` = n())
 ```
-<br><br>
+
+```{r, primer-spider-table}
+knitr::kable(agreement_table, 
+  caption = 'Do the two primers agree on the species of the commonest spider that they detected in a given sample? 
+  (NA is shown when only one of the primers detected a spider)')
+```
+
 <br>
-I'd interpret the above table as showing the limitations of metabarcoding primers for specific taxonomic assignment. However it important to note that its possible for a well-extracted specimen to have more of a prey species' DNA sequenced than its own.
+I'd interpret Table \@ref(tab:primer-spider-table) as showing the limitations of metabarcoding primers for specific taxonomic assignment. However it important to note that its possible for a well-extracted specimen to have more of a prey species' DNA sequenced than its own.<br>
+One thing that its worth having in the backs of our (well, my) minds is that the cases where the two primers disagree could be because one of the primers has produced a read which couldn't be well-assigned, which would be possible to see in the quality score given to it by the classification software I used (RDP classifier). I used the minimum viable quality score which was recommended by a recent paper (I think 0.6), but it could be that thats too low to be sensible in our case. 
+
+When using the minimum viable quality score, any sequences which are unable to be assigned to species level with a confidence above that threshold, would get assigned to the lowest taxonomic level which has a score exceeding the threshold (be it genus, family, order, etc).<br>
+Figure \@ref(fig:fig-quality-hist) shows the distribution of the quality scores we have for our commonest spider sequence per sample, and we can see that most of the spider assignments were actually pretty good. When eyeballing the raw data, I can see that for some samples we sometimes have disagreements when the two 'best' matches are at 0.99 confidence. It'll be interesting to compare this data with the genuine identifications when they come from BOLD, as they'll provide some better information on what we can use as a viable score for assignments, and if that varies by PCR primer.
+
+```{r fig-quality-hist, fig.cap= "Histogram showing quality scores of the best-matches for identifying each spider"}
+ggplot(matches_df, aes(x = best_spi_conf, colour = primer)) + 
+  geom_histogram(fill = 'white', position = 'identity') +
+  session_theme+
+  scale_colour_viridis_d()
+```
 
 
 <br><br><br>
-Finally, one thing of interest is the relationship between the concentration of DNA Abby detected in the extracted spiders, and how it correlates to the number of species or ASVs in the sequencing data. As we can see, theres not really much of a link (Figure \@ref(fig:fig-dna-conc)).
+Finally, one thing of minor interest is the relationship between the concentration of DNA Abby detected in the extracted spiders, and how it correlates to the number of species or ASVs in the sequencing data. As we can see, theres not really much of a link (Figure \@ref(fig:fig-dna-conc)). So theres probably no correlation between the amount of DNA in the extract and the amount of taxa we detect: likely because most of the DNA extracted is from the predator anyways.
 
 ```{r fig-dna-conc, fig.cap="DNA concentration and taxonomic groups detected.", warning=F}
 all_data %>% 
