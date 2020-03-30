@@ -534,7 +534,7 @@ all_data %>%
 Ok, my initial takehomes:
 * the PCR primers detected different stuff. Its difficult to know if one was 'better' than the other, but we got more stuff with ZBJ
 * the replicates were actually pretty inconsistent, which is worrying. This could be as a result of lots of the sequencing depth being taken up by the spiders themselves, but we can't say that with much confidence
-  + with this in mind its definitely worth us continuing to investigate primers which avoid amplifying the predator. We're aiming to use the NOSPI primers on some spider and dragonfly samples soon.
+  + with this in mind its definitely worth us continuing to investigate alternative primers which avoid amplifying the predator. We're aiming to use the NOSPI primers on some spider and dragonfly samples soon.
 * the identification of species themselves could be a bit of an issue with the Ghanain data. ASVs seem to be a fairly reliable proxy here.
 
 
