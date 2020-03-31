@@ -16,9 +16,9 @@ options(scipen=99999)
 options(warnPartialMatchArgs = TRUE)
 ```
 
-We now have data back from the spider diet sequencing: hooray! We don't yet have identifications for the spiders themselves, but even in the absence of these we can do a lot with the data. So far I've only made summary figures: I'm sure for the key findings we can do statistical tests etc for when we're putting them in a manuscript, but right now everything that follows is very exploratory. It seemed worth putting all of this down on 'paper' to convey to you both what I think it shows, and then get some honest thoughts on if you agree with me. Plus its good for us to all have a similar understanding of our data :)
+We now have data back from the spider diet sequencing: hooray! We don't yet have identifications for the spiders themselves, but we can still find out a lot using the current data. So far I've only made summary figures: I'm sure for the key findings we can do statistical tests etc before putting them in a manuscript, but right now everything that follows is very exploratory. It seemed worth putting all of this down on 'paper' to convey to you both what I think it shows, and then get some honest thoughts on if you agree with me. Plus its good for us to all have a similar understanding of our data :)
 
-To give a recap of the methods: we had a lot of spiders which Doug Boyes collected for us from Oxfordshire and Berkshire, we amplified each spider using two primer pairs (ANML and ZBJ), and are interested in how complimentary they are, or if they both tell us basically the same thing. For a subset of spiders we also did PCR replicates: where the same spider was amplified and sequenced TWICE for each PCR primer, rather than once. This can tell us a bit about how replicable the whole process is.
+To give a recap of the methods: we had a lot of spiders which Doug Boyes collected for us from Oxfordshire and Berkshire, we amplified each spider using two primer pairs (ANML and ZBJ), and are interested in how complimentary they are, or if they both tell us basically the same thing. For a subset of spiders we also did PCR replicates: where the same spider was amplified and sequenced TWICE per PCR primer, rather than once. This can tell us a bit about how replicable the whole process is.
   
 The ZBJ (Zeale) primers have been in use very heavily for nine years, but are frequently criticised. ANML is one of the new kids on the block.
 <br>
@@ -74,7 +74,11 @@ all_data <- left_join(meta_edgelist, field_data,
          diet_Order = fct_rev(diet_Order))
 ```
 
-In Table \@ref(tab:basic-summary-table) is a little summary of the number of reads, Amplicon Sequence Variants (ASVs: they're basically a unique haplotype, but with bioinformatic trickery allowing me to control for inevitable sequencing errors) and assigned species passing QC for each primer pair. Unsurprisingly as we were using generalist arthropod primers, most of the sequencing effort was used in detecting spider DNA, presumably the DNA of the consumer itself. N.B. the information below is just classifying whether a read is classified as 'Araneae' or not: it isn't classifying it as the consumer species or not. So some of those araneae reads may actually be dietary DNA, rather than the DNA of the predator. I'll make some more complex code to look into some of this when we have the identity of the consumers confirmed by BOLD, but this is good for now.
+Table \@ref(tab:basic-summary-table) is a little summary for each primer of the number of:
+* sequencing reads
+* Amplicon Sequence Variants (ASVs: they're basically a unique haplotype, but Ive used some bioinformatic trickery to control for inevitable sequencing errors) 
+* Assigned species
+Unsurprisingly as we were using generalist arthropod primers, most of the sequencing effort was used in detecting spider DNA, presumably the DNA of the consumer itself. N.B. the information below is just stating whether a read is classified as 'Araneae' or not: it isn't classifying it as the consumer species or not. So some of those araneae reads may actually be dietary DNA, rather than the DNA of the predator. I'll make some more complex code to look into some of this when we have the identity of the consumers confirmed by BOLD, but this is good for now.
 <br>
 <br>
 ```{r basic-summary-table}
