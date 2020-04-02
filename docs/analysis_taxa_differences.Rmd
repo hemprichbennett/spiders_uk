@@ -72,6 +72,10 @@ all_data <- left_join(meta_edgelist, field_data,
   # plots it the wrong way round ('A' at bottom, 'Z' at top)
   mutate(diet_Order = as.factor(diet_Order),
          diet_Order = fct_rev(diet_Order))
+
+
+write_csv(all_data, path = here('data', 'processed_data',
+                                'edges_lab_and_field.csv'))
 ```
 
 Table \@ref(tab:basic-summary-table) is a little summary for each primer of the number of:  
