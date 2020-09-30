@@ -63,19 +63,37 @@ field_data <- field_data %>%
     side = "left", pad = "0"
   ))
 
+# now read in the BIN file
+bins <- read_csv(here('data', 'bold_project_outputs', '2020-09-23_bins.csv'))
 
-# Now join both tibbles together, to make one object to rule them all
+# get rid of superfluous columns
+bins <- bins %>%
+  select(`Field ID`, BIN) %>%
+  rename(consumer_id = `Field ID`,
+         consumer_BIN = BIN)
+
+
+# Now join all tibbles together, to make one object to rule them all
 
 all_data <- left_join(meta_edgelist, field_data, 
                       by = c("consumer_id" = "Sample.Unique.ID")) %>%
   # Make the taxonomic Order a factor, then reverse it as ggplot by default
   # plots it the wrong way round ('A' at bottom, 'Z' at top)
   mutate(diet_Order = as.factor(diet_Order),
-         diet_Order = fct_rev(diet_Order))
+         diet_Order = fct_rev(diet_Order)) %>%
+  left_join(bins)
 
 
 write_csv(all_data, path = here('data', 'processed_data',
                                 'edges_lab_and_field.csv'))
+
+# Make a simple csv of all the unique dietary species
+
+meta_edgelist %>%
+  pull(diet_Species) %>%
+  unique(.) %>% 
+  write_lines(., here('results', 'diet_species.txt'))
+  
 ```
 
 Table \@ref(tab:basic-summary-table) is a little summary for each primer of the number of:  
