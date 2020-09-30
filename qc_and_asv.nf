@@ -1,6 +1,6 @@
 params.indir = ''
 
-toSearch = params.indir + '**/*_R{1,2}*.fastq.gz'
+toSearch = params.indir + 'data/**/*_R{1,2}*.fastq.gz'
 
 input_files = Channel
   .fromFilePairs(toSearch)
