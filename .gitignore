@@ -11,3 +11,4 @@ figures/*
 *.css
 *.js
 .DS_Store
+results/*
