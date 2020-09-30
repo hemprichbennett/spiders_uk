@@ -138,3 +138,7 @@ write.csv(edgelist,
   paste0(outdir, "/simple_edgelist.csv"),
   row.names = F
 )
+
+write.csv(seqtab, 
+          paste0(outdir, "/seqtab.csv"),
+          row.names = F)
