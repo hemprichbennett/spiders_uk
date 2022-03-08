@@ -1,0 +1,434 @@
+---
+title: "Spider ecology"
+author: "David Hemprich-Bennett"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: bookdown::html_document2
+---
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, message = F, warning = F)
+
+# prevent scientific notation for numbers lower than
+options(scipen=99999)
+
+
+# Prevent partial-match errors
+options(warnPartialMatchArgs = TRUE)
+```
+
+We have spiders which were captured by sweep-netting under three different lighting treatments: High-Pressure Sodium (HPS), Light-emitting diode (LED) and unlit areas. As well as our methodological questions, we're interested in how their diets and feeding ecology varies depending on this environmental variable. Our abilities to do much are quite constrained as we don't know the taxonomic identities of the spiders in question and this is likely an extremely important variable, but we can start to hypothesise in the absence of this.
+<br>
+We'll start by doing some simple analyses of how the number of ASVs and taxonomic species detected per spider varies depending on the lighting and primer, as well as the month in which they were captured.
+<br><br><br>
+```{r setup, warning=F, message = F, results = F}
+# For basic 'tidy' functions for data manipulation
+library(tidyverse)
+# for making filepaths easier in rmarkdown documents
+library(here)
+# for tidying model outputs
+library(broom)
+# for making nice tables using the command 'kable'
+library(knitr)
+# for NMDS
+library(vegan)
+
+
+
+# Make a basic theme for use in the plots below
+session_theme <- theme_classic() +
+  theme(legend.position = "bottom",
+  text = element_text(size=15))
+
+# Read in data
+big_tib <- read_csv(here('data', 'processed_data', 'edges_lab_and_field.csv'))
+
+# for future visualisation etc we'll want to rename some variables
+big_tib <- big_tib %>%
+  mutate(SiteLampType = gsub('unlit', 'Unlit', SiteLampType),
+         month_name = gsub('Apr', 'April', month_name),
+         month_name = gsub('Feb', 'February', month_name))
+
+# Make a tibble with no spiders in metabarcoding data, and no pcr replicates
+no_spiders <- big_tib %>%
+  filter(diet_Order != 'Araneae',
+         pcr_replicate != '02',
+         # Remove the controls
+         month_name != 'NA',
+         !is.na(SiteLampType))
+
+
+```
+
+```{r}
+# Make some simple csvs summarising the spider species, genus, and family-level 
+# composition of the metabarcoding data
+
+# species
+big_tib %>%
+  filter(diet_Order == 'Araneae') %>%
+  group_by(diet_Species) %>%
+  summarise(n = n()) %>%
+  write_csv(path = here('results', 'taxonomy', 
+                        'spider_metabarcoding_species_composition.csv'))
+
+# genus
+big_tib %>%
+  filter(diet_Order == 'Araneae') %>%
+  group_by(diet_Genus) %>%
+  summarise(n = n()) %>%
+  write_csv(path = here('results', 'taxonomy', 
+                        'spider_metabarcoding_genus_composition.csv'))
+
+
+# family
+big_tib %>%
+  filter(diet_Order == 'Araneae') %>%
+  group_by(diet_Family) %>%
+  summarise(n = n()) %>%
+  write_csv(path = here('results', 'taxonomy', 
+                        'spider_metabarcoding_family_composition.csv'))
+
+
+```
+
+
+# Primer and lighting comparisons
+```{r degree-plot}
+
+# Make a tibble, for use in showing degree under different conditions
+degree_tib <- no_spiders %>%
+  # Remove superfluous columns
+  select(
+    primer, consumer_id, diet_asv, diet_Species, Treatment, SiteLampType,
+    month_name, SiteName
+  ) %>%
+  # Make the months in month order, rather than alphabetical
+  mutate(month_name = fct_rev(as.factor(month_name))) %>%
+  # Make a summary column, showing the number of unique asvs and species per
+  # combination of grouping variables
+  group_by(primer, consumer_id, Treatment, SiteLampType, month_name, SiteName) %>%
+  summarise(
+    n_asvs = length(unique(diet_asv)),
+    n_species = length(unique(diet_Species))
+  ) %>%
+  # as we want to use facet_grid, we need to put n_asvs and n_species into a
+  # single column
+  pivot_longer(
+    cols = c("n_asvs", "n_species"),
+    names_to = "taxonomic_unit",
+    values_to = "n"
+  )
+
+
+ggplot(degree_tib, aes(x = SiteLampType, y = n)) +
+  facet_grid(primer ~ taxonomic_unit) +
+  session_theme +
+  geom_violin()
+
+```
+
+
+```{r degree-models}
+# Now make two models, with every possible explanatory variable included. 
+# In the next chunk we'll use AIC with backward model selection to assess the 
+# different combinations of variables
+asv_mod <- lm(n ~
+factor(SiteLampType) +
+  factor(primer) +
+  factor(SiteName) +
+  factor(month_name) - 1,
+  data = filter(
+    degree_tib,
+    # remove the rows where taxonomic_unit == 'n_species'
+    taxonomic_unit == "n_asvs"
+    )
+)
+
+
+species_mod <- lm(n ~ factor(primer) +
+  factor(SiteLampType) +
+  factor(SiteName) +
+  factor(month_name) - 1,
+  data = filter(
+    degree_tib,
+    # remove the rows where taxonomic_unit == 'n_asvs'
+    taxonomic_unit == "n_species"
+    )
+  )
+
+```
+<br><br>
+Having made some simple models for number of asvs consumed ~ month + pcr primer + site + lighting treatment, we can use model selection with AIC to identify what terms are retained when trying to explain the number of unique ASVs consumed per predator, and the number of unique species consumed per predator:
+
+\newpage
+Model selection for ASVs:
+```{r asv_aic}
+asv_aic <- MASS::stepAIC(object = asv_mod, direction = "backward")
+
+asv_aic
+```
+\newpage
+
+Model selection for ASVs:
+```{r species_aic}
+spec_aic <- MASS::stepAIC(object = species_mod, direction = "backward")
+spec_aic
+
+```
+\newpage
+For both types of models the best AIC (the AIC value which has the lowest numerical value) was obtained by excluding the site name variable from the model, while retaining all other variables.
+<br>
+Here are the model summary statistics:
+
+ASVs:
+```{r asv_lm_summary}
+# Make the best possible model, then display it's summary stats
+best_asv_mod <- lm(n ~ factor(primer) +
+  factor(SiteLampType) +
+  # factor(SiteName) +
+  factor(month_name) - 1,
+  data = filter(
+    degree_tib,
+    # remove the rows where taxonomic_unit == 'n_species'
+    taxonomic_unit == "n_asvs"
+    )
+  )
+
+best_asv_mod %>%
+  tidy() %>%
+  kable()
+
+```
+<br><br>
+```{r asvs-per-spider-plot}
+ggplot(
+  filter(degree_tib, taxonomic_unit == "n_asvs"),
+  aes(x = SiteLampType, y = n, colour = month_name)
+) +
+  geom_violin() +
+  scale_colour_viridis_d() +
+  facet_wrap(. ~ primer) +
+  ggtitle("Number of ASVs per spider") +
+  session_theme
+```
+\newpage
+
+species:
+```{r species_lm_summary}
+best_spec_mod <- lm(n ~ factor(primer) +
+  factor(SiteLampType) +
+  # factor(SiteName) +
+  factor(month_name) - 1,
+  data = filter(
+    degree_tib,
+    # remove the rows where taxonomic_unit == 'n_asvs'
+    taxonomic_unit == "n_species"
+    )
+  )
+  
+best_spec_mod %>%
+  tidy() %>%
+  kable()
+```
+<br><br>
+```{r species-per-spider plot}
+ggplot(
+  filter(degree_tib, taxonomic_unit == "n_species"),
+  aes(x = SiteLampType, y = n, colour = month_name)
+) +
+  geom_violin() +
+  scale_colour_viridis_d() +
+  facet_wrap(. ~ primer) +
+  ggtitle("Number of species per spider") +
+  session_theme
+```
+
+
+The primer sets agree on only one thing: the spiders consume more prey in April than they do in February. This seasonal trend is unsurprising: you'd expect there to be more species active in spring than in winter. ZBJ fits our basic ecological hypothesis nicely: that spiders in unlit areas have the greatest dietary richness, followed by HPS lighting. However ANML finds LED to have the highest, with no (visible) difference between the other two treatments. This strong interaction between the primers and lighting treatments could be worth making some sort of more complicated model to analyse, (maybe a mixed effects) but I'd argue that its overkill for this sort of exploratory analysis where the graph tells us all that we really want right now.
+\newpage  
+
+# Combined, species-level data  
+
+However we had always hoped that the primers would be complimentary, so in an ecological sense we were always most interested in what we would discover if we combined the data generated by the two primer pairs:
+
+```{r AIC-on-combined-primers}
+
+combined_degree <- no_spiders %>%
+  # Get rid of superfluous columns
+  select(consumer_id, diet_Species, Treatment, SiteLampType,
+         month_name, SiteName) %>%
+  # Make the months in month order, rather than alphabetical
+  mutate(month_name = fct_rev(as.factor(month_name))) %>%
+  # Do a group-by/summarise to give us the number of unique species per 
+  # individual spider
+  group_by(consumer_id, Treatment, SiteLampType, month_name, SiteName) %>%
+  summarise(n_species = length(unique(diet_Species)))
+
+
+# make a model for this combined dataset
+species_mod <- lm(n_species ~ factor(SiteLampType) +
+         factor(SiteName) +
+       factor(month_name) - 1, 
+       data = combined_degree)
+
+# now backward-select by AIC
+MASS::stepAIC(object = species_mod, direction = "backward")
+
+```
+<br>
+Once again, we find that site name is a poor explanatory variable, but that we should keep the rest. Lets make a new model retaining just lighting type and month:
+<br>
+```{r pooled-mod}
+best_combined_mod <- lm(n_species ~ 
+       factor(SiteLampType) +
+       factor(month_name) - 1, 
+       data = combined_degree)
+  
+best_combined_mod %>%
+  tidy() %>%
+  kable()
+```
+<br>The model seems to indicate that LED spiders have the greatest species richness, followed by unlit, followed by HPS. Also, spiders in April consumed a greater species richness than those in February. Lets visualise this:
+This agrees pretty well with the model. Its easier to interpret from the ridgeplot below though 
+<br><br>
+```{r degree-ridgeplot}
+ggplot(combined_degree, 
+       aes(y = SiteLampType, x = n_species, fill = month_name)) +
+  # Make the ridgeline plot
+  ggridges:: geom_density_ridges(
+    # make the ridges opaque
+    aes(alpha = 0.5),
+    # Adjust the space between the points on the y-axis
+  scale = 0.95) +
+  # Stop the top of the plot being clipped off, which by default it is
+  coord_cartesian(clip = "off") +
+  #facet_wrap(.~ month_name) +
+  scale_fill_viridis_d(name = 'Month')+ 
+  labs(x = 'Number of prey species found per spider', 
+       y = 'Lighting treatment') +
+  # This is a really weird syntax, but basically we tell ggplot that we want
+  # the legend to show the colour, but not to do it's default behaviour of 
+  # giving us a legend item for 'alpha'
+  guides(fill = 'legend', alpha = 'none')+
+  session_theme
+```
+
+<br><br><br>
+From the above plots, it looks to me like HPS is the poorest treatment for species richness overall, with little difference beterrn unlit and LED. Theres also a difference between the two months, with spiders consuming a greater species richness in April.
+
+# NMDS analyses
+Some of the disagreement on the primer verdicts could be due to the taxonomic bias of the two primers. Lets have a look via an NMDS:  
+<br><br><br>
+```{r primer-nmds, results=F}
+
+# For now this ignores that we have some PCR replicates. You'll want to change that
+adjacency_tib <- big_tib %>%
+  # get rid of any controls that have made it through
+  filter(SiteLampType != 'NA') %>%
+  # make a unique id column
+  unite(uid, primer, SiteName, SiteLampType, sep = '_') %>%
+  # remove the spider sequences
+  filter(diet_Order != 'Araneae') %>%
+  # make it a summary tibble, showing number of times an asv of a given order 
+  # was found for that primer and sitelamptype)
+  group_by(uid, diet_Order) %>%
+  summarise(n_asvs = n()) %>%
+  # now make it into an adjacency matrix instead of edgelist
+  pivot_wider(names_from = diet_Order, values_from = n_asvs) %>%
+  # Replace any nas (this is where a sample didn't contain a given order:
+  # pivot_wider only makes entries in the matrix for values >0)
+  replace(is.na(.), 0)
+  
+# now we switch to base R, to get a properly formatted matrix
+uids <- adjacency_tib$uid
+
+adjacency_mat <- as.matrix(adjacency_tib[,-1])
+rownames(adjacency_mat) <- uids
+
+NMDS <- metaMDS(adjacency_mat, k = 2, trymax = 1000)
+
+
+NMDS_tib <- # extract the NMDS coordinates
+  as.data.frame(scores(NMDS)) %>%
+  # make a uid column from the rownames: tidyverse HATES retaining rownames
+  mutate(uid = rownames(.)) %>%
+  # split the uid column into 3 different columns
+  separate(uid, into = c('primer', 'SiteName', 'SiteLampType'), sep = '_')
+
+
+ggplot(NMDS_tib, aes(x=NMDS1, y=NMDS2, col=SiteLampType)) +
+ geom_point() +
+facet_wrap(. ~ primer) +
+ stat_ellipse() +
+  scale_color_viridis_d() +
+ theme_bw() +
+ labs(title = "NMDS Plot")
+
+```
+
+<br><br>
+
+Now we do the exact same thing, but pooling the data from both primers rather than keeping the datasets separate  
+<br><br>
+```{r noprimer-nmds, results = F}
+
+# For now this ignores that we have some PCR replicates. You'll want to change that
+pooled_adjacency_tib <- big_tib %>%
+  # get rid of any controls that have made it through
+  filter(SiteLampType != 'NA') %>%
+  # make a unique id column
+  unite(uid, SiteName, SiteLampType, sep = '_') %>%
+  # remove the spider sequences
+  filter(diet_Order != 'Araneae') %>%
+  # make it a summary tibble, showing number of times an asv of a given order 
+  # was found for that primer and sitelamptype)
+  group_by(uid, diet_Order) %>%
+  summarise(n_asvs = n()) %>%
+  # now make it into an adjacency matrix instead of edgelist
+  pivot_wider(names_from = diet_Order, values_from = n_asvs) %>%
+  # Replace any nas (this is where a sample didn't contain a given order:
+  # pivot_wider only makes entries in the matrix for values >0)
+  replace(is.na(.), 0)
+  
+# now we switch to base R, to get a properly formatted matrix
+pooled_uids <- pooled_adjacency_tib$uid
+
+pooled_adjacency_mat <- as.matrix(pooled_adjacency_tib[,-1])
+rownames(pooled_adjacency_mat) <- pooled_uids
+
+
+pooled_NMDS <- metaMDS(pooled_adjacency_mat, k = 2, trymax = 1000)
+
+
+pooled_NMDS_tib <- # extract the NMDS coordinates
+  as.data.frame(scores(pooled_NMDS)) %>%
+  # make a uid column from the rownames: tidyverse HATES retaining rownames
+  mutate(uid = rownames(.)) %>%
+  # split the uid column into 3 different columns
+  separate(uid, into = c('SiteName', 'SiteLampType'), sep = '_')
+
+
+ggplot(pooled_NMDS_tib, aes(x=NMDS1, y=NMDS2, col=SiteLampType)) +
+ geom_point() +
+ stat_ellipse() +
+  scale_color_viridis_d() +
+ theme_bw() +
+ labs(title = "NMDS Plot")
+
+```
+
+<br><br>
+
+I'm not sure how much I like these NMDS, I think the data input is pretty limited in its scope and so they probably don't mean so much. Possibly ADONIS/SIMPER may instead be more useful
+
+
+ALSO NEITHER OF THE NMDS USES MONTH AS A VARIABLE, ITS PROBABLY THE MOST IMPORTANT ONE.
+
+
+Not sure if I 100% trust this yet, but it shows the contribution of different taxa to any pairwise differences observed between treatments above. They're all Diptera, Lepidoptera and Coleoptera, but between unlit and HPS Hemiptera is also an important factor. Which is potentially interesting if true?
+<br><br>
+```{r simper-analysis}
+simper(pooled_adjacency_mat, pooled_NMDS_tib$SiteLampType)
+```
+

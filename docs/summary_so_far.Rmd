@@ -79,7 +79,7 @@ To keep a bit of logical separation, I've got some general ecological analyses i
 ```{r show-species-table}
 knitr::kable(species_summary_table)
 ```
-N.B. I know Table \@ref(tab:show-species-table) has a lot of NAs at the bottom, hopefully they'll be assigned soon.
+N.B. I know the above table has a lot of NAs at the bottom, hopefully they'll be assigned soon.
 
 <br><br><br><br>
 
