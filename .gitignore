@@ -1,0 +1,17 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+.nextflow.log*
+.nextflow/cache/*
+work/*
+data/*
+*.html
+*.pdf
+*.png
+*.jpeg
+*.jpg
+*.js
+.nextflow/history
+results/*
